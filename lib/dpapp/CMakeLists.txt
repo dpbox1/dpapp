@@ -6,11 +6,11 @@ add_library(dpapp SHARED "")
 set_target_properties(dpapp PROPERTIES OUTPUT_NAME dpapp)
 
 target_compile_features(dpapp PRIVATE c_std_11)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -rdynamic -fno-strict-aliasing -Wall -Wall -pipe  -D_GNU_SOURCE -D_REENTRANT -fPIC -Wno-deprecated")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -rdynamic -fno-strict-aliasing -Wall -pipe -D_GNU_SOURCE -D_REENTRANT -fPIC -Wno-deprecated")
 
 target_include_directories(dpapp PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/lib>
-    $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
+    $<BUILD_INTERFACE:${DPAPP_STAGE_DIR}/usr/include>
     $<INSTALL_INTERFACE:usr/include>
 )
 
@@ -101,44 +101,6 @@ else()
 endif()
 
 file(GLOB DPAPP_HEADERS "${PROJECT_SOURCE_DIR}/lib/dpapp/*.h")
-install(
-    FILES ${DPAPP_HEADERS}
-    DESTINATION usr/include/dpapp
-)
+dpapp_stage_sync_files(usr/include/dpapp FILES ${DPAPP_HEADERS})
 
-install(
-    TARGETS dpapp
-    EXPORT dpappTargets
-    ARCHIVE DESTINATION usr/lib
-    LIBRARY DESTINATION usr/lib
-    RUNTIME DESTINATION usr/bin
-)
-
-include(CMakePackageConfigHelpers)
-
-configure_package_config_file(
-    ${PROJECT_SOURCE_DIR}/cmake/dpappConfig.cmake.in
-    ${PROJECT_BINARY_DIR}/dpappConfig.cmake
-    INSTALL_DESTINATION usr/lib/cmake/dpapp
-    PATH_VARS CMAKE_INSTALL_PREFIX
-)
-
-write_basic_package_version_file(
-    ${PROJECT_BINARY_DIR}/dpappConfigVersion.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY AnyNewerVersion
-)
-
-install(
-    FILES
-        ${PROJECT_BINARY_DIR}/dpappConfig.cmake
-        ${PROJECT_BINARY_DIR}/dpappConfigVersion.cmake
-    DESTINATION usr/lib/cmake/dpapp
-)
-
-install(
-    EXPORT dpappTargets
-    FILE dpappTargets.cmake
-    NAMESPACE dpbox::
-    DESTINATION usr/lib/cmake/dpapp
-)
+dpapp_install_package(dpapp TARGETS dpapp)

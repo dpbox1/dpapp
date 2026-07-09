@@ -1,0 +1,25 @@
+if(NOT EXISTS "@CMAKE_BINARY_DIR@/install_manifest.txt")
+    message(FATAL_ERROR "Cannot find install manifest: @CMAKE_BINARY_DIR@/install_manifest.txt")
+endif()
+
+file(READ "@CMAKE_BINARY_DIR@/install_manifest.txt" _files)
+string(REGEX REPLACE "\n" ";" _files "${_files}")
+foreach(_file IN LISTS _files)
+    if(EXISTS "${_file}")
+        message(STATUS "Uninstalling ${_file}")
+        file(REMOVE "${_file}")
+    endif()
+endforeach()
+
+# install(CODE) 生成的符号链接，不在 install_manifest 中
+foreach(_extra
+    "@CMAKE_INSTALL_PREFIX@/bin"
+    "@CMAKE_INSTALL_PREFIX@/usr/bin/luajit"
+    "@CMAKE_INSTALL_PREFIX@/lua/llib"
+    "@CMAKE_INSTALL_PREFIX@/lua/luajit-2.1"
+)
+    if(EXISTS "${_extra}")
+        message(STATUS "Uninstalling ${_extra}")
+        file(REMOVE "${_extra}")
+    endif()
+endforeach()

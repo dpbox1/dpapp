@@ -2,7 +2,10 @@ enable_language(C CXX ASM)
 
 get_filename_component(PROJECT_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.. ABSOLUTE)
 
-message(STATUS "PROJECT_ROOT_DIR: ${PROJECT_ROOT_DIR}")
+# 测试模块 .so 留在 build/tst/，不进入 stage/usr/lib。
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
 
 # echo 集成：tst/test_echo.sh case <binding> <proto> <short|large> ...
 function(dpapp_add_echo_test suffix binding proto size timeout)
@@ -11,7 +14,7 @@ function(dpapp_add_echo_test suffix binding proto size timeout)
         NAME ${_test_name}
         COMMAND /usr/bin/env bash ${PROJECT_ROOT_DIR}/tst/test_echo.sh
             case ${binding} ${proto} ${size}
-            $<TARGET_FILE:dpapp_bin> ${PROJECT_BINARY_DIR}
+            $<TARGET_FILE:dpapp_bin> ${DPAPP_DEV_ROOT}
     )
     set(_props TIMEOUT ${timeout} WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
     set_tests_properties(${_test_name} PROPERTIES ${_props})
@@ -24,7 +27,7 @@ function(dpapp_add_http_test suffix binding proto timeout)
         NAME ${_test_name}
         COMMAND /usr/bin/env bash ${PROJECT_ROOT_DIR}/tst/test_http.sh
             case ${binding} ${proto}
-            $<TARGET_FILE:dpapp_bin> ${PROJECT_BINARY_DIR}
+            $<TARGET_FILE:dpapp_bin> ${DPAPP_DEV_ROOT}
     )
     set(_props TIMEOUT ${timeout} WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
     if(proto STREQUAL "http3")
@@ -54,7 +57,7 @@ target_compile_features(test_coroutine PRIVATE c_std_11)
 target_include_directories(test_coroutine PUBLIC
     ${PROJECT_ROOT_DIR}/lib
     ${PROJECT_ROOT_DIR}/lib/dpaco
-    ${PROJECT_BINARY_DIR}
+    ${DPAPP_STAGE_DIR}/usr/include
 )
 target_link_libraries(test_coroutine pthread m)
 
@@ -72,7 +75,7 @@ target_compile_features(test_coroutine_perf PRIVATE c_std_11)
 target_include_directories(test_coroutine_perf PUBLIC
     ${PROJECT_ROOT_DIR}/lib
     ${PROJECT_ROOT_DIR}/lib/dpaco
-    ${PROJECT_BINARY_DIR}
+    ${DPAPP_STAGE_DIR}/usr/include
 )
 target_link_libraries(test_coroutine_perf pthread m)
 
@@ -83,7 +86,7 @@ add_executable(test_basic test_basic.c)
 target_compile_features(test_basic PRIVATE c_std_11)
 target_include_directories(test_basic PUBLIC
     ${PROJECT_ROOT_DIR}/lib
-    ${PROJECT_BINARY_DIR}
+    ${DPAPP_STAGE_DIR}/usr/include
 )
 add_dependencies(test_basic dpapp)
 target_link_libraries(test_basic dpapp)
@@ -150,7 +153,7 @@ if(DPAPP_WITH_CWC)
     target_include_directories(test_ctc_perf PUBLIC
         ${PROJECT_ROOT_DIR}/lib
         ${PROJECT_ROOT_DIR}/lib/dpaco
-        ${PROJECT_BINARY_DIR}
+        ${DPAPP_STAGE_DIR}/usr/include
         ${PROJECT_ROOT_DIR}/bin
     )
 
@@ -165,7 +168,7 @@ if(DPAPP_WITH_CWC)
     target_include_directories(test_cwc PUBLIC
         ${PROJECT_ROOT_DIR}/lib
         ${PROJECT_ROOT_DIR}/lib/dpaco
-        ${PROJECT_BINARY_DIR}
+        ${DPAPP_STAGE_DIR}/usr/include
         ${PROJECT_ROOT_DIR}/bin
     )
 
@@ -173,7 +176,7 @@ if(DPAPP_WITH_CWC)
         NAME integration.cwc.ctc
         COMMAND /usr/bin/env bash ${PROJECT_ROOT_DIR}/tst/test_cwc.sh
             $<TARGET_FILE:dpapp_bin>
-            ${PROJECT_BINARY_DIR}
+            ${DPAPP_DEV_ROOT}
             $<TARGET_FILE:test_cwc>
     )
     set_tests_properties(
@@ -194,7 +197,7 @@ if(DPAPP_WITH_CWC)
     target_include_directories(test_fsm_sig_pip PUBLIC
         ${PROJECT_ROOT_DIR}/lib
         ${PROJECT_ROOT_DIR}/lib/dpaco
-        ${PROJECT_BINARY_DIR}
+        ${DPAPP_STAGE_DIR}/usr/include
         ${PROJECT_ROOT_DIR}/bin
     )
 
@@ -202,7 +205,7 @@ if(DPAPP_WITH_CWC)
         NAME integration.cwc.fsm_sig_pip
         COMMAND /usr/bin/env bash ${PROJECT_ROOT_DIR}/tst/test_fsm_sig_pip.sh
             $<TARGET_FILE:dpapp_bin>
-            ${PROJECT_BINARY_DIR}
+            ${DPAPP_DEV_ROOT}
             $<TARGET_FILE:test_fsm_sig_pip>
     )
     set_tests_properties(
@@ -222,8 +225,8 @@ if(lsquic_FOUND)
     target_include_directories(test_dpqic_hdrset PUBLIC
         ${PROJECT_ROOT_DIR}/lib
         ${PROJECT_ROOT_DIR}/lib/dpaco
-        ${PROJECT_BINARY_DIR}
-        ${DPBOX_PREFIX}/include
+        ${DPAPP_STAGE_DIR}/usr/include
+        ${DPBOX_USR_PREFIX}/include
     )
 
     add_dependencies(test_dpqic_hdrset dpapp)
@@ -257,7 +260,7 @@ if(DPAPP_WITH_CPP)
 
     target_include_directories(test_cpp_fsm_sig_pip PUBLIC
         ${PROJECT_ROOT_DIR}/lib
-        ${PROJECT_BINARY_DIR}
+        ${DPAPP_STAGE_DIR}/usr/include
         ${PROJECT_ROOT_DIR}/bin
     )
 
@@ -265,7 +268,7 @@ if(DPAPP_WITH_CPP)
         NAME integration.cpp.fsm_sig_pip
         COMMAND /usr/bin/env bash ${PROJECT_ROOT_DIR}/tst/test_fsm_sig_pip.sh
             $<TARGET_FILE:dpapp_bin>
-            ${PROJECT_BINARY_DIR}
+            ${DPAPP_DEV_ROOT}
             $<TARGET_FILE:test_cpp_fsm_sig_pip>
     )
     set_tests_properties(
@@ -280,7 +283,7 @@ if(DPAPP_WITH_CPP)
             NAME integration.dplua.basic
             COMMAND $<TARGET_FILE:dpapp_bin>
                 -n1 1
-                -d ${PROJECT_BINARY_DIR}
+                -d ${DPAPP_DEV_ROOT}
                 ${PROJECT_ROOT_DIR}/tst/test_lua.lua
         )
         set_tests_properties(
@@ -294,7 +297,7 @@ if(DPAPP_WITH_CPP)
             NAME integration.dplua.fsm_sig_pip
             COMMAND /usr/bin/env bash ${PROJECT_ROOT_DIR}/tst/test_fsm_sig_pip.sh
                 $<TARGET_FILE:dpapp_bin>
-                ${PROJECT_BINARY_DIR}
+                ${DPAPP_DEV_ROOT}
                 ${PROJECT_ROOT_DIR}/tst/test_fsm_sig_pip.lua
         )
         set_tests_properties(

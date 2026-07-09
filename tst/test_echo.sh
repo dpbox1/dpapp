@@ -62,33 +62,33 @@ resolve_binding() {
 
     case "${binding}" in
     cwc)
-        server_mod="cwc_echo_svr.so"
-        client_mod="cwc_echo_cet.so"
+        server_mod="example/cwc_echo_svr.so"
+        client_mod="example/cwc_echo_cet.so"
         server_extra=()
         use_n1=0
-        ld_path="${build_root}/lib/dpapp:${build_root}/lib/dpcwc:${build_root}/lib/dpaco"
+        ld_path="${build_root}/usr/lib"
         short_payload="hello dpapp"
         expect_timing=1
         short_timeout=3
         large_timeout=3
         ;;
     cpp)
-        server_mod="cpp_echo_svr.so"
-        client_mod="cpp_echo_cet.so"
+        server_mod="example/cpp_echo_svr.so"
+        client_mod="example/cpp_echo_cet.so"
         server_extra=()
         use_n1=0
-        ld_path="${build_root}/lib/dpapp:${build_root}/lib/dpcwc:${build_root}/lib/dpcpp:${build_root}/lib/dpaco"
+        ld_path="${build_root}/usr/lib"
         short_payload="hello dpapp"
         expect_timing=1
         short_timeout=3
         large_timeout=3
         ;;
     lua)
-        server_mod="${PROJECT_ROOT}/app/lua/echo_svr.lua"
-        client_mod="${PROJECT_ROOT}/app/lua/echo_cet.lua"
+        server_mod="example/echo_svr.lua"
+        client_mod="example/echo_cet.lua"
         server_extra=()
         use_n1=1
-        ld_path="${build_root}/lib/dpapp:${build_root}/lib/dplua:${build_root}/lib/dpcwc:${build_root}/lib/dpcpp:${build_root}/lib/dpaco"
+        ld_path="${build_root}/usr/lib"
         short_payload="hello all"
         expect_timing=0
         short_timeout=3
@@ -167,7 +167,8 @@ run_short() {
     local dpapp_bin="$1"
     local build_root="$2"
     local proto="$3"
-    local log_dir="${build_root}/test-logs"
+    local log_dir
+    log_dir="$(tst_log_dir "${build_root}")"
     mkdir -p "${log_dir}"
 
     local tag="${binding}-${proto}-short-${$}"
@@ -231,7 +232,8 @@ run_large() {
     local dpapp_bin="$1"
     local build_root="$2"
     local proto="$3"
-    local log_dir="${build_root}/test-logs"
+    local log_dir
+    log_dir="$(tst_log_dir "${build_root}")"
     mkdir -p "${log_dir}"
 
     local tag="${binding}-${proto}-large-${$}"
@@ -344,9 +346,9 @@ run_all() {
     fi
 
     local -a bindings=()
-    [[ -f "${build_root}/app/cwc_echo_svr.so" ]] && bindings+=(cwc)
-    [[ -f "${build_root}/app/cpp_echo_svr.so" ]] && bindings+=(cpp)
-    [[ -f "${PROJECT_ROOT}/app/lua/echo_svr.lua" ]] && bindings+=(lua)
+    [[ -f "${build_root}/app/example/cwc_echo_svr.so" ]] && bindings+=(cwc)
+    [[ -f "${build_root}/app/example/cpp_echo_svr.so" ]] && bindings+=(cpp)
+    [[ -f "${build_root}/app/example/echo_svr.lua" ]] && bindings+=(lua)
 
     local binding proto size
     for binding in "${bindings[@]}"; do

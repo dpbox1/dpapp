@@ -59,10 +59,11 @@ make -j8 && make install
 ```shell
 mkdir build
 cd build
-cmake ../ -DCMAKE_BUILD_TYPE=MinSizeRel -DCMAKE_INSTALL_PREFIX=/opt/dpbox \
-  -DDPAPP_WITH_LSQUIC=ON
+cmake ../ -DCMAKE_BUILD_TYPE=MinSizeRel -DDPAPP_WITH_LSQUIC=ON
 make -j8 && make install
 ```
+
+默认安装到 `/opt/dpbox`；可 `-DCMAKE_INSTALL_PREFIX=<path>` 覆盖。
 
 可选功能开关：
 
@@ -73,25 +74,27 @@ make -j8 && make install
 | `DPAPP_WITH_CWC` | ON | dpaco + dpcwc + C 示例 |
 | `DPAPP_WITH_CPP` | ON | dpcpp + C++ 示例 |
 | `DPAPP_WITH_LUA` | ON | dplua + LuaJIT |
+| `DPAPP_COMPILE_LUA` | ON | Lua 脚本编译为字节码（`luajit -b`）；依赖 `DPAPP_WITH_LUA` |
 | `DPAPP_WITH_TESTS` | ON | 测试用例 |
 | `DPAPP_WITH_DOCS` | ON | Doxygen HTML（需 `doxygen`） |
 
-启用 `DPAPP_WITH_DOCS` 后，构建目录生成 `doc/doxygen/html/index.html`。**Topics** 页：C 核心为 `dpapi` → `dpapp` → `dpapp_*`（3 级）；绑定层为 `dpapi` → `dpcwc_asc` 等文件级主题（2 级）。骨架见 `doc/dpdoxy_groups.h`；开发说明见 `doc/develop.md`「API 文档」。
 
 安装生成的 `dpapp_config.h` 定义 `DPAPP_*_ENABLE` 与 `DPAPP_HAS_*` 宏（如 `DPAPP_HAS_LUA`），供 `#if` 条件编译。
 
-### 安装布局（摘要）
+### 安装布局
+
+编译产物在 `build/stage/`，`make install` 后同步至 `/opt/dpbox`（或自定义 `CMAKE_INSTALL_PREFIX`），二者布局相同：
 
 ```
-${PREFIX}/
-├── usr/bin/dpapp          # 入口
-├── usr/lib/libdpapp.so …  # 核心与各绑定 .so
-├── lua/dplua/             # dp*.lua + dplua.lua（dplua 构建同步安装）
-├── app/example/           # 示例 .so / .lua
-└── var/                   # 运行时临时目录
+/opt/dpbox/
+├── bin/dpapp              # 入口（链接 usr/bin/dpapp）
+├── usr/lib/libdp*.so
+├── lua/dplua/
+├── app/example/
+└── var/
 ```
 
-开发时在构建树直接运行: `-d` 指向**安装前缀**（含 `lua/dplua/`）；未 install 时指向仓库根。
+安装完成后 `cd /opt/dpbox` 运行，详见 [start.md](start.md)。仅编译未安装时，将路径换为 `build/stage` 即可。
 
 ### 运行测试
 

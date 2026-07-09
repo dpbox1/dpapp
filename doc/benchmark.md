@@ -3,13 +3,17 @@
 | 项 | 值 |
 |---|---|
 | 主机 | Linux x86_64，AMD Ryzen 7 7840HS，16 核，15 GiB RAM，epoll |
-| 构建 | `CMAKE_BUILD_TYPE=Release`，`build/` |
+| 构建 | `CMAKE_BUILD_TYPE=Release`，`/opt/dpbox` |
 | OpenSSL / lsquic | 启用 |
 
 ### CTC 跨线程调用
 
+`test_ctc_perf.so` 随测试构建，位于源码 `build/tst/`，未安装：
+
 ```bash
-dpapp -n2 2 -d build tst/test_ctc_perf.so 10000 10000
+cd /opt/dpbox
+export LD_LIBRARY_PATH=usr/lib
+bin/dpapp -n2 2 /path/to/dpapp/build/tst/test_ctc_perf.so 10000 10000
 ```
 
 2666666 task/s
@@ -35,16 +39,12 @@ tcpkali -c 100 -T 30s -w 8 -m 'hello world' 127.0.0.1:4490
 服务端（每次测试前释放 4490 端口，确认 `ss -tln sport = :4490` 处于 LISTEN）：
 
 ```bash
-BUILD=build
+cd /opt/dpbox
+export LD_LIBRARY_PATH=usr/lib
 
-# cwc
-$BUILD/bin/dpapp $BUILD/app/cwc_echo_svr.so
-
-# cpp
-$BUILD/bin/dpapp $BUILD/app/cpp_echo_svr.so
-
-# lua（单 worker）
-$BUILD/bin/dpapp $BUILD/lua/echo_svr.lua
+bin/dpapp app/example/cwc_echo_svr.so
+bin/dpapp app/example/cpp_echo_svr.so
+bin/dpapp app/example/echo_svr.lua
 ```
 
 记录 tcpkali 输出中的 `Aggregate bandwidth` 下行（↓）与上行（↑）值（单位 Mbps）。

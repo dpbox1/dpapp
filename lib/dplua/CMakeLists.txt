@@ -9,22 +9,7 @@ if(NOT EXISTS "${DPLUA_LUA_SRC}/dplua.lua")
     message(FATAL_ERROR "FFI Lua sources not found in ${DPLUA_LUA_SRC}")
 endif()
 
-set(DPLUA_LUA_STAGING "${PROJECT_BINARY_DIR}/lua/dplua")
-file(MAKE_DIRECTORY "${DPLUA_LUA_STAGING}")
 file(GLOB _dplua_lua_files "${DPLUA_LUA_SRC}/dp*.lua")
-set(_dplua_lua_outputs "")
-foreach(_f IN LISTS _dplua_lua_files)
-    get_filename_component(_name "${_f}" NAME)
-    set(_out "${DPLUA_LUA_STAGING}/${_name}")
-    list(APPEND _dplua_lua_outputs "${_out}")
-    add_custom_command(
-        OUTPUT "${_out}"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_f}" "${DPLUA_LUA_STAGING}/"
-        DEPENDS "${_f}"
-        COMMENT "Sync ${_name} -> lua/dplua/"
-    )
-endforeach()
-add_custom_target(dplua_lua_sync ALL DEPENDS ${_dplua_lua_outputs})
 
 # luajit.h 由 make 生成，configure 阶段应检查源码树内恒存在的文件。
 if(NOT luajit_SOURCE_DIR OR NOT EXISTS "${luajit_SOURCE_DIR}/src/luajit.c")
@@ -37,7 +22,7 @@ set(LUAJIT_SONAME "libluajit-5.1.so.2.1.${DPLUA_LUAJIT_RELVER}")
 
 add_custom_command(
     WORKING_DIRECTORY ${luajit_SOURCE_DIR}
-    OUTPUT ${PROJECT_BINARY_DIR}/lib/libluajit-5.1.so
+    OUTPUT ${DPAPP_STAGE_DIR}/usr/lib/libluajit-5.1.so
     DEPENDS
         ${luajit_SOURCE_DIR}/src/lj_state.c
         ${luajit_SOURCE_DIR}/src/luajit.c
@@ -46,28 +31,34 @@ add_custom_command(
         BUILDMODE=dynamic
         RELVER=${DPLUA_LUAJIT_RELVER}
         XCFLAGS='-msse4.2 -fPIC'
-        PREFIX=${PROJECT_BINARY_DIR}/
-        INSTALL_SHARE_=${PROJECT_BINARY_DIR}/lua
-        INSTALL_SHARE=${PROJECT_BINARY_DIR}/lua
-        INSTALL_LJLIBD=${PROJECT_BINARY_DIR}/lua/luajit-2.1
+        PREFIX=${DPAPP_STAGE_DIR}/usr/
     COMMAND make install
         BUILDMODE=dynamic
         RELVER=${DPLUA_LUAJIT_RELVER}
         XCFLAGS='-msse4.2 -fPIC'
-        PREFIX=${PROJECT_BINARY_DIR}/
-        INSTALL_SHARE_=${PROJECT_BINARY_DIR}/lua
-        INSTALL_SHARE=${PROJECT_BINARY_DIR}/lua
-        INSTALL_LJLIBD=${PROJECT_BINARY_DIR}/lua/luajit-2.1
-    COMMAND ${CMAKE_COMMAND} -E remove -f ${PROJECT_BINARY_DIR}/lib/libluajit-5.1.a
+        PREFIX=${DPAPP_STAGE_DIR}/usr/
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${DPAPP_STAGE_DIR}/usr/lib/lua
+    COMMAND ${CMAKE_COMMAND} -E remove -f ${DPAPP_STAGE_DIR}/usr/lib/libluajit-5.1.a
 )
 
 add_custom_target(
     compile_luajit ALL
-    DEPENDS ${PROJECT_BINARY_DIR}/lib/libluajit-5.1.so
+    DEPENDS ${DPAPP_STAGE_DIR}/usr/lib/libluajit-5.1.so
 )
 
-set(LUAJIT_INC_DIR ${PROJECT_BINARY_DIR}/include/luajit-2.1 CACHE INTERNAL "")
-set(LUAJIT_LIB ${PROJECT_BINARY_DIR}/lib/libluajit-5.1.so CACHE INTERNAL "")
+set(_dplua_lua_depends "")
+if(DPAPP_COMPILE_LUA)
+    list(APPEND _dplua_lua_depends compile_luajit)
+endif()
+dplua_lua_bytecode(
+    TARGET dplua_lua_sync
+    DEST lua/dplua
+    FILES ${_dplua_lua_files}
+    DEPENDS ${_dplua_lua_depends}
+)
+
+set(LUAJIT_INC_DIR ${DPAPP_STAGE_DIR}/usr/include/luajit-2.1 CACHE INTERNAL "")
+set(LUAJIT_LIB ${DPAPP_STAGE_DIR}/usr/lib/libluajit-5.1.so CACHE INTERNAL "")
 
 add_library(dplua SHARED "")
 add_dependencies(dplua dpapp compile_luajit dplua_lua_sync)
@@ -97,73 +88,11 @@ target_sources(dplua PRIVATE
     dplua_ext.c
 )
 
-install(DIRECTORY "${PROJECT_BINARY_DIR}/lua/"
-    DESTINATION lua
-    FILES_MATCHING
-    PATTERN "*"
-)
-
-file(GLOB _luajit_bins ${PROJECT_BINARY_DIR}/bin/luajit-*)
-install(FILES ${PROJECT_BINARY_DIR}/bin/luajit ${_luajit_bins}
-    DESTINATION usr/bin
-    PERMISSIONS
-        OWNER_READ OWNER_WRITE OWNER_EXECUTE
-        GROUP_READ GROUP_EXECUTE
-        WORLD_READ WORLD_EXECUTE
-)
-
-install(DIRECTORY "${PROJECT_BINARY_DIR}/lib/"
-    DESTINATION ${DPBOX_USR_PREFIX}/lib
-    FILES_MATCHING
-    PATTERN "libluajit-5.1.so*"
-)
-
-install(DIRECTORY "${PROJECT_BINARY_DIR}/include/"
-    DESTINATION ${DPBOX_USR_PREFIX}/include
-    FILES_MATCHING
-    PATTERN "*.h"
-    PATTERN "*.hpp"
-)
-
 file(GLOB DPLUA_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/*.h")
-install(
-    FILES ${DPLUA_HEADERS}
-    DESTINATION ${DPBOX_USR_PREFIX}/include/dplua
-)
+dpapp_stage_sync_files(usr/include/dplua FILES ${DPLUA_HEADERS})
 
-install(
-    TARGETS dplua
-    EXPORT dpluaTargets
-    ARCHIVE DESTINATION ${DPBOX_USR_PREFIX}/lib
-    LIBRARY DESTINATION ${DPBOX_USR_PREFIX}/lib
-    RUNTIME DESTINATION ${DPBOX_USR_PREFIX}/bin
-)
+dpapp_install_package(dplua TARGETS dplua)
 
-include(CMakePackageConfigHelpers)
-
-configure_package_config_file(
-    ${PROJECT_SOURCE_DIR}/cmake/dpluaConfig.cmake.in
-    ${PROJECT_BINARY_DIR}/dpluaConfig.cmake
-    INSTALL_DESTINATION usr/lib/cmake/dplua
-    PATH_VARS CMAKE_INSTALL_PREFIX
-)
-
-write_basic_package_version_file(
-    ${PROJECT_BINARY_DIR}/dpluaConfigVersion.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY AnyNewerVersion
-)
-
-install(
-    FILES
-        ${PROJECT_BINARY_DIR}/dpluaConfig.cmake
-        ${PROJECT_BINARY_DIR}/dpluaConfigVersion.cmake
-    DESTINATION usr/lib/cmake/dplua
-)
-
-install(
-    EXPORT dpluaTargets
-    FILE dpluaTargets.cmake
-    NAMESPACE dpbox::
-    DESTINATION usr/lib/cmake/dplua
+dpapp_stage_sync_files(usr/lib/cmake/dplua
+    FILES ${PROJECT_SOURCE_DIR}/cmake/dplua_compiler.cmake
 )

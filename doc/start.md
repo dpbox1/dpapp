@@ -1,7 +1,6 @@
 ## 开始
 
-切到安装目录下，默认为 `/opt/dpbox`; 开发时也可在构建目录 `build/` 下，将 `-d` 指向仓库根或安装前缀。
-
+安装完成后进入 `/opt/dpbox`（默认前缀），在该目录下执行命令。
 ```shell
 Usage: ./bin/dpapp [system...] [external...] [module] [module...]
 System options:
@@ -25,7 +24,7 @@ Lua external options:
 
 - `-n<t>` 指定每种类型线程的线程数量，即一种类型可对应多个线程
 - `-u --cpu_off` dpapp 支持 CPU 绑定，该参数用于指定 CPU 绑定偏移
-- `-d --root_dir` 指定 dpapp 运行时根目录，默认是 dpapp 可执行文件的上一级目录
+- `-d --root_dir` 未指定时，默认为 dpapp 可执行文件所在目录的上一级（如 `bin/dpapp` → `/opt/dpbox`）
 - `-s --stack_size` 指定 **C 模块（dpcwc + dpaco 有栈协程）** 默认栈大小，单位为 **KB**（内部会乘以 1024 再交给 `dpaco_thinit`）。缺省等价于 64KB，适合一般场景。
 
 > **HTTP/3 / lsquic 注意：**
@@ -36,11 +35,12 @@ Lua external options:
 
 ## 示例
 
-以下命令假设当前目录为构建树 `build/`，证书位于仓库 `app/crt.pem`、`app/key.pem`。开发时建议：
-
 ```bash
-export LD_LIBRARY_PATH=./lib/dpapp:./lib/dpcwc:./lib/dpaco
+cd /opt/dpbox
+export LD_LIBRARY_PATH=usr/lib
 ```
+
+示例模块与证书位于 `app/example/`。
 
 C++（`app/cpp/`）与 Lua（`app/lua/`）示例与 CWC 用法基本一致：模块名分别改为 `cpp_*` / `*.lua`，端口与协议参数相同，下文不再重复列出。
 
@@ -50,16 +50,16 @@ C++（`app/cpp/`）与 Lua（`app/lua/`）示例与 CWC 用法基本一致：模
 
 ```bash
 # 终端1：服务端（4490/tcp、4491/ssl、4492/quic）
-./bin/dpapp -d . ./app/cwc_echo_svr.so ../app/crt.pem ../app/key.pem
+bin/dpapp app/example/cwc_echo_svr.so app/example/crt.pem app/example/key.pem
 
 # 终端2：TCP 客户端
-./bin/dpapp -d . ./app/cwc_echo_cet.so
+bin/dpapp app/example/cwc_echo_cet.so
 
 # 终端3：SSL 客户端
-./bin/dpapp -d . ./app/cwc_echo_cet.so ssl
+bin/dpapp app/example/cwc_echo_cet.so ssl
 
 # 终端4：QUIC 客户端（需 lsquic 构建）
-./bin/dpapp -d . ./app/cwc_echo_cet.so qic
+bin/dpapp app/example/cwc_echo_cet.so qic
 ```
 
 ### CWC HTTP HelloWorld（`app/cwc/`）
@@ -67,7 +67,7 @@ C++（`app/cpp/`）与 Lua（`app/lua/`）示例与 CWC 用法基本一致：模
 统一提供 HTTP/1.1、HTTPS、HTTP/3（端口 4480 / 4443 / 4443）。
 
 ```bash
-./bin/dpapp -d . --stack_size 256 ./app/cwc_http_svr.so ../app/crt.pem ../app/key.pem
+bin/dpapp --stack_size 256 app/example/cwc_http_svr.so app/example/crt.pem app/example/key.pem
 ```
 
 验证：

@@ -33,16 +33,16 @@ resolve_binding() {
 
     case "${binding}" in
     cwc)
-        server_mod="cwc_http_svr.so"
+        server_mod="example/cwc_http_svr.so"
         use_n1=0
         use_stack256=1
-        ld_path="${build_root}/lib/dpapp:${build_root}/lib/dpcwc:${build_root}/lib/dpaco"
+        ld_path="${build_root}/usr/lib"
         ;;
     lua)
-        server_mod="${PROJECT_ROOT}/app/lua/http_svr.lua"
+        server_mod="example/http_svr.lua"
         use_n1=1
         use_stack256=0
-        ld_path="${build_root}/lib/dpapp:${build_root}/lib/dplua:${build_root}/lib/dpcwc:${build_root}/lib/dpcpp:${build_root}/lib/dpaco"
+        ld_path="${build_root}/usr/lib"
         ;;
     *)
         echo "unknown binding: ${binding}" >&2
@@ -135,7 +135,8 @@ run_case() {
 
     resolve_binding "${binding}" "${build_root}" || exit 1
 
-    local log_dir="${build_root}/test-logs"
+    local log_dir
+    log_dir="$(tst_log_dir "${build_root}")"
     mkdir -p "${log_dir}"
 
     local tag="${binding}-${proto}-${$}"
@@ -196,8 +197,8 @@ run_all() {
     fi
 
     local -a bindings=()
-    [[ -f "${build_root}/app/cwc_http_svr.so" ]] && bindings+=(cwc)
-    [[ -f "${PROJECT_ROOT}/app/lua/http_svr.lua" ]] && bindings+=(lua)
+    [[ -f "${build_root}/app/example/cwc_http_svr.so" ]] && bindings+=(cwc)
+    [[ -f "${build_root}/app/example/http_svr.lua" ]] && bindings+=(lua)
 
     local binding proto
     for binding in "${bindings[@]}"; do

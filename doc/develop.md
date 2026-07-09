@@ -26,7 +26,8 @@
 cmake --build build --target doxygen_doc
 ```
 
-- 入口：[build/doc/doxygen/html/index.html](../build/doc/doxygen/html/index.html)（相对本仓库构建目录）
+- 入口：`/opt/dpbox/usr/share/dpapp/doxygen/html/index.html`
+- 中间产物：`build/doc/doxygen/html/`（Doxygen 生成后同步到 stage）
 - **Topics** 页：`dpapi` → `dpapp`/*（C 核心，3 级）或 `dpcwc_asc` / `dpcpp` 等（绑定层，2 级）；主题骨架见 `doc/dpdoxy_groups.h`
 - 亦可直接阅读 `lib/*` 头文件中的 `@brief` 注释
 
@@ -39,7 +40,7 @@ app/
 ├── lua/     # 脚本:echo_svr.lua、http_svr.lua …
 ```
 
-构建产物 `.so` 输出到 `build/app/`; 安装至 `${PREFIX}/app/example/`。Lua 示例脚本同样安装到 `app/example/`。
+安装至 `/opt/dpbox`（默认）；示例 `.so`、`.lua` 与证书在 `app/example/`。
 
 ## 使用模块开发应用
 
@@ -47,15 +48,9 @@ app/
 
 - 共享库命名: `your_module.so`（建议不带 `lib` 前缀）。
 - 后缀分流: `.so` → `dpcpp__*` / `dpcwc__*`; `.lua` → dplua。
-- 模块搜索: `root_dir/app/`。
+- 模块搜索: `root_dir/app/`（默认 `/opt/dpbox/app/`）。
 
-可运行示例（CWC echo / HTTP、curl 与 lsquic 交叉验证）见 [start.md](start.md)。C++/Lua 与 CWC 端口及协议参数一致，仅模块名不同。
-
-```bash
-cd build
-export LD_LIBRARY_PATH=./lib/dpapp:./lib/dpcwc:./lib/dpaco
-./bin/dpapp -d . ./app/cwc_echo_cet.so
-```
+可运行示例见 [start.md](start.md)。C++/Lua 与 CWC 端口及协议参数一致，仅模块名不同。
 
 ### C++ 模块（dpcpp）
 

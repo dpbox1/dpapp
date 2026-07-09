@@ -1,8 +1,16 @@
-cmake_minimum_required(VERSION 3.16.0)
+cmake_minimum_required(VERSION 3.22.0)
 project(dpapp VERSION 1.2)
+
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "/opt/dpbox" CACHE PATH "Install prefix" FORCE)
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+include(dpapp_stage)
+include(dpapp_package)
+set_property(GLOBAL PROPERTY DPAPP_STAGE_SYNC_ENTRIES "")
+set_property(GLOBAL PROPERTY DPAPP_STAGE_SYNC_DIRS "")
 
 option(DPAPP_WITH_LSQUIC "Support lsquic" OFF)
 option(DPAPP_WITH_SSL "Enable OpenSSL support" ON)
@@ -10,26 +18,20 @@ option(DPAPP_WITH_TESTS "Build test cases" ON)
 option(DPAPP_WITH_CWC "Build CWC components" ON)
 option(DPAPP_WITH_CPP "Build C++ components" ON)
 option(DPAPP_WITH_LUA "Build Lua components" ON)
-option(DPAPP_WITH_DOCS "Build Doxygen HTML documentation on every build (ALL)" ON)
+include(CMakeDependentOption)
+cmake_dependent_option(DPAPP_COMPILE_LUA "Compile Lua scripts to bytecode (luajit -b)" ON "DPAPP_WITH_LUA" OFF)
+option(DPAPP_WITH_DOCS "Build Doxygen HTML documentation on every build (ALL)" OFF)
 
 # -----------------------------------------------------------------------------
 # Install prefixes / rpath
 # -----------------------------------------------------------------------------
-if(NOT DEFINED DPBOX_PREFIX)
-    set(DPBOX_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE PATH "Path to DPAPP installation")
-endif()
-if(NOT DEFINED DPBOX_USR_PREFIX)
-    set(DPBOX_USR_PREFIX ${DPBOX_PREFIX}/usr)
-endif()
+set(DPBOX_PREFIX ${CMAKE_INSTALL_PREFIX} CACHE PATH "Path to DPAPP installation")
+set(DPBOX_USR_PREFIX ${DPBOX_PREFIX}/usr)
 
 set(CMAKE_INSTALL_RPATH "${DPBOX_USR_PREFIX}/lib;${DPBOX_USR_PREFIX}/lib64")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-if(EXISTS "${DPBOX_USR_PREFIX}")
-    message(STATUS "DPBOX_USR_PREFIX: ${DPBOX_USR_PREFIX}")
-else()
-    message(STATUS "DPBOX_USR_PREFIX does not exist: ${DPBOX_USR_PREFIX} (will fallback to system)")
-endif()
+message(STATUS "Install prefix: ${DPBOX_PREFIX}")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions(-DDPAPP_DEBUG)
@@ -97,6 +99,53 @@ else()
 endif()
 
 # -----------------------------------------------------------------------------
+# Build stage (install-layout artifacts, separate from CMake intermediates)
+# -----------------------------------------------------------------------------
+set(DPAPP_STAGE_DIR "${CMAKE_BINARY_DIR}/stage" CACHE INTERNAL "")
+set(DPAPP_DEV_ROOT "${DPAPP_STAGE_DIR}" CACHE INTERNAL "")
+
+# 重新 configure 时清空 stage，避免陈旧产物与布局冲突
+if(EXISTS "${DPAPP_STAGE_DIR}")
+    file(REMOVE_RECURSE "${DPAPP_STAGE_DIR}")
+endif()
+if(EXISTS "${CMAKE_BINARY_DIR}/stage_layout")
+    file(REMOVE_RECURSE "${CMAKE_BINARY_DIR}/stage_layout")
+endif()
+
+# 安装时先同步 stage，再由 install(TARGETS/EXPORT) 覆盖库与 cmake Targets
+# 分项 DESTINATION 避免 DESTINATION . 产生 ${PREFIX}/./ 路径
+# lua/ 仅安装子目录；符号链接从 stage 复制（见下方 install(CODE)）
+foreach(_dpapp_stage_top usr app var)
+    install(DIRECTORY "${DPAPP_STAGE_DIR}/${_dpapp_stage_top}/"
+        DESTINATION "${_dpapp_stage_top}"
+        USE_SOURCE_PERMISSIONS
+    )
+endforeach()
+if(DPAPP_WITH_LUA)
+    install(DIRECTORY "${DPAPP_STAGE_DIR}/lua/dplua/"
+        DESTINATION lua/dplua
+        USE_SOURCE_PERMISSIONS
+    )
+    install(DIRECTORY "${DPAPP_STAGE_DIR}/lua/clib/"
+        DESTINATION lua/clib
+        USE_SOURCE_PERMISSIONS
+    )
+endif()
+
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${DPAPP_STAGE_DIR}/usr/lib")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${DPAPP_STAGE_DIR}/usr/lib")
+
+set(DPAPP_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+set(DPAPP_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+
+set(DPAPP_CONFIG_HEADER "${DPAPP_STAGE_DIR}/usr/include/dpapp_config.h")
+configure_file(
+    "${PROJECT_SOURCE_DIR}/lib/dpapp_config.h.in"
+    "${DPAPP_CONFIG_HEADER}"
+    @ONLY
+)
+
+# -----------------------------------------------------------------------------
 # FetchContent dependencies (cpp / lua)
 # -----------------------------------------------------------------------------
 if(DPAPP_WITH_CPP OR DPAPP_WITH_LUA)
@@ -134,7 +183,6 @@ endif()
 
 if(DPAPP_WITH_CPP)
     set(UCORO_BUILD_TESTING OFF CACHE BOOL "Disable ucoro tests in dpapp build" FORCE)
-    # 与 dpapp 安装布局对齐：头文件与 cmake 包均在 prefix/usr/ 下。
     set(CMAKE_INSTALL_INCLUDEDIR usr/include CACHE STRING "" FORCE)
     FetchContent_Declare(
         ucoro
@@ -142,36 +190,23 @@ if(DPAPP_WITH_CPP)
         GIT_TAG master
         GIT_SHALLOW TRUE
         GIT_SUBMODULES ""
-        PATCH_COMMAND bash -c
-            "sed -i 's#share/ucoro#usr/lib/cmake/ucoro#' CMakeLists.txt"
+        PATCH_COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_ucoro_stage.sh"
+            CMakeLists.txt
     )
     FetchContent_MakeAvailable(ucoro)
+
+    dpapp_stage_sync_directory(usr/include/ucoro "${ucoro_SOURCE_DIR}/include/ucoro")
+    dpapp_stage_sync_files(usr/lib/cmake/ucoro
+        FILES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ucoro-config.stage.cmake.in"
+        OUT_NAMES ucoro-config.cmake
+    )
 endif()
-
-# -----------------------------------------------------------------------------
-# Generated config header
-# -----------------------------------------------------------------------------
-set(DPAPP_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
-set(DPAPP_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
-
-set(DPAPP_CONFIG_HEADER "${PROJECT_BINARY_DIR}/lib/dpapp_config.h")
-configure_file(
-    "${PROJECT_SOURCE_DIR}/lib/dpapp_config.h.in"
-    "${DPAPP_CONFIG_HEADER}"
-    @ONLY
-)
-
-install(
-    FILES ${DPAPP_CONFIG_HEADER}
-    DESTINATION usr/include
-    RENAME dpapp_config.h
-)
 
 # -----------------------------------------------------------------------------
 # Project targets
 # -----------------------------------------------------------------------------
 include_directories(lib)
-include_directories("${PROJECT_BINARY_DIR}/lib")
+include_directories("${DPAPP_STAGE_DIR}/usr/include")
 
 add_subdirectory(lib/dpapp)
 
@@ -195,34 +230,40 @@ endif()
 add_subdirectory(bin)
 add_subdirectory(app)
 
+dpapp_stage_sync_target()
+
 # -----------------------------------------------------------------------------
 # Install helpers
 # -----------------------------------------------------------------------------
-install(DIRECTORY DESTINATION var)
+if(NOT TARGET uninstall)
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+        @ONLY
+    )
+    add_custom_target(uninstall
+        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+        COMMENT "Uninstall dpapp from ${CMAKE_INSTALL_PREFIX}"
+    )
+endif()
 
-# Under install prefix (same as DPBOX_PREFIX when CMAKE_INSTALL_PREFIX matches):
-# bin -> usr/bin. Bracket form keeps ${CMAKE_INSTALL_PREFIX} for install-time
-# (supports cmake --install --prefix).
-install(
-    CODE [[
-    set(_dpapp_root "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}")
-    if(EXISTS "${_dpapp_root}/bin" AND NOT IS_SYMLINK "${_dpapp_root}/bin")
-        message(WARNING "Skipping bin -> usr/bin: ${_dpapp_root}/bin exists and is not a symlink")
-    else()
-        if(EXISTS "${_dpapp_root}/bin")
-            file(REMOVE "${_dpapp_root}/bin")
-        endif()
-        execute_process(
-            COMMAND "${CMAKE_COMMAND}" -E create_symlink usr/bin bin
-            WORKING_DIRECTORY "${_dpapp_root}"
-            RESULT_VARIABLE _dpapp_symlink_r
-        )
-        if(_dpapp_symlink_r)
-            message(WARNING "Could not create ${_dpapp_root}/bin -> usr/bin (code ${_dpapp_symlink_r})")
-        endif()
-    endif()
-    ]]
-)
+set(_dpapp_link_install "
+set(_r \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}\")
+execute_process(COMMAND \"${CMAKE_COMMAND}\" -E rm -rf \"\${_r}/bin\")
+file(INSTALL \"${DPAPP_STAGE_DIR}/bin\" DESTINATION \"\${_r}\")
+")
+if(DPAPP_WITH_LUA)
+    string(APPEND _dpapp_link_install "
+file(MAKE_DIRECTORY \"\${_r}/lua\")
+execute_process(COMMAND \"${CMAKE_COMMAND}\" -E rm -rf
+    \"\${_r}/lua/llib\" \"\${_r}/lua/luajit-2.1\")
+file(INSTALL
+    \"${DPAPP_STAGE_DIR}/lua/llib\"
+    \"${DPAPP_STAGE_DIR}/lua/luajit-2.1\"
+    DESTINATION \"\${_r}/lua\")
+")
+endif()
+install(CODE "${_dpapp_link_install}")
 
 # -----------------------------------------------------------------------------
 # Tests

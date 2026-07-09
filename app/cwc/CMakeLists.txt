@@ -9,7 +9,7 @@ target_compile_features(cwc_echo_svr PRIVATE c_std_11)
 target_include_directories(cwc_echo_svr PUBLIC
     ${PROJECT_SOURCE_DIR}/lib
     ${PROJECT_SOURCE_DIR}/lib/dpaco
-    ${PROJECT_BINARY_DIR}
+    ${DPAPP_STAGE_DIR}/usr/include
     ${PROJECT_SOURCE_DIR}/bin
     ${PROJECT_SOURCE_DIR}/app/cwc
 )
@@ -25,7 +25,7 @@ target_compile_features(cwc_echo_cet PRIVATE c_std_11)
 target_include_directories(cwc_echo_cet PUBLIC
     ${PROJECT_SOURCE_DIR}/lib
     ${PROJECT_SOURCE_DIR}/lib/dpaco
-    ${PROJECT_BINARY_DIR}
+    ${DPAPP_STAGE_DIR}/usr/include
     ${PROJECT_SOURCE_DIR}/bin
     ${PROJECT_SOURCE_DIR}/app/cwc
 )
@@ -41,7 +41,7 @@ target_compile_features(cwc_echo_cet_bm PRIVATE c_std_11)
 target_include_directories(cwc_echo_cet_bm PUBLIC
     ${PROJECT_SOURCE_DIR}/lib
     ${PROJECT_SOURCE_DIR}/lib/dpaco
-    ${PROJECT_BINARY_DIR}
+    ${DPAPP_STAGE_DIR}/usr/include
     ${PROJECT_SOURCE_DIR}/bin
     ${PROJECT_SOURCE_DIR}/app/cwc
 )
@@ -56,15 +56,7 @@ target_compile_features(cwc_http_svr PRIVATE cxx_std_11)
 target_include_directories(cwc_http_svr PUBLIC
     ${PROJECT_SOURCE_DIR}/lib
     ${PROJECT_SOURCE_DIR}/lib/dpaco
-    ${PROJECT_BINARY_DIR}
+    ${DPAPP_STAGE_DIR}/usr/include
     ${PROJECT_SOURCE_DIR}/bin
     ${PROJECT_SOURCE_DIR}/app/cwc
-)
-
-install(
-    TARGETS cwc_echo_svr cwc_echo_cet cwc_echo_cet_bm cwc_http_svr
-    EXPORT dpapp-example-targets
-    ARCHIVE DESTINATION app/example
-    LIBRARY DESTINATION app/example
-    RUNTIME DESTINATION usr/bin
 )

@@ -44,6 +44,9 @@ if(NOT EXISTS "${DPLUA_LUAJIT_INCLUDE_DIR}/luajit.h")
     message(FATAL_ERROR "dplua: luajit headers not found under ${DPLUA_LUAJIT_INCLUDE_DIR}")
 endif()
 
+set(DPLUA_LUAJIT_EXECUTABLE "${PACKAGE_PREFIX_DIR}/usr/bin/luajit")
+include("${CMAKE_CURRENT_LIST_DIR}/dplua_compiler.cmake")
+
 include("${CMAKE_CURRENT_LIST_DIR}/dpluaTargets.cmake")
 
 check_required_components(dplua)

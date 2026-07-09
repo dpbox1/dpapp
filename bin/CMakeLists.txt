@@ -1,8 +1,11 @@
 add_executable(dpapp_bin)
-set_target_properties(dpapp_bin PROPERTIES OUTPUT_NAME "dpapp")
+set_target_properties(dpapp_bin PROPERTIES
+    OUTPUT_NAME "dpapp"
+    RUNTIME_OUTPUT_DIRECTORY "${DPAPP_STAGE_DIR}/usr/bin"
+)
 target_include_directories(dpapp_bin PRIVATE
     ${PROJECT_SOURCE_DIR}/lib
-    ${PROJECT_BINARY_DIR}
+    ${DPAPP_STAGE_DIR}/usr/include
 )
 
 add_dependencies(dpapp_bin dpapp)
@@ -48,29 +51,4 @@ elseif(DPAPP_WITH_CWC)
     )
 endif()
 
-install(
-    TARGETS dpapp_bin
-    RUNTIME DESTINATION usr/bin
-)
-
-include(CMakePackageConfigHelpers)
-
-configure_package_config_file(
-    ${PROJECT_SOURCE_DIR}/cmake/dpapp_binConfig.cmake.in
-    ${PROJECT_BINARY_DIR}/dpapp_binConfig.cmake
-    INSTALL_DESTINATION usr/lib/cmake/dpapp_bin
-    PATH_VARS CMAKE_INSTALL_PREFIX
-)
-
-write_basic_package_version_file(
-    ${PROJECT_BINARY_DIR}/dpapp_binConfigVersion.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY AnyNewerVersion
-)
-
-install(
-    FILES
-        ${PROJECT_BINARY_DIR}/dpapp_binConfig.cmake
-        ${PROJECT_BINARY_DIR}/dpapp_binConfigVersion.cmake
-    DESTINATION usr/lib/cmake/dpapp_bin
-)
+dpapp_install_package(dpapp_bin NO_EXPORT)
