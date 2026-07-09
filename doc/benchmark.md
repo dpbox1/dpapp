@@ -12,7 +12,6 @@
 
 ```bash
 cd /opt/dpbox
-export LD_LIBRARY_PATH=usr/lib
 bin/dpapp -n2 2 /path/to/dpapp/build/tst/test_ctc_perf.so 10000 10000
 ```
 
@@ -40,7 +39,6 @@ tcpkali -c 100 -T 30s -w 8 -m 'hello world' 127.0.0.1:4490
 
 ```bash
 cd /opt/dpbox
-export LD_LIBRARY_PATH=usr/lib
 
 bin/dpapp app/example/cwc_echo_svr.so
 bin/dpapp app/example/cpp_echo_svr.so

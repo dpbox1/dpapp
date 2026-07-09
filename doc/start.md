@@ -2,7 +2,8 @@
 
 安装完成后进入 `/opt/dpbox`（默认前缀），在该目录下执行命令。
 ```shell
-Usage: ./bin/dpapp [system...] [external...] [module] [module...]
+bin/dpapp -h
+Usage: dpapp [system...] [external...] [module] [module...]
 System options:
 -h [ --help ]                            Produce help message
 -V [ --version ]                         Print version message
@@ -37,7 +38,6 @@ Lua external options:
 
 ```bash
 cd /opt/dpbox
-export LD_LIBRARY_PATH=usr/lib
 ```
 
 示例模块与证书位于 `app/example/`。

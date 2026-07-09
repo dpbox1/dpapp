@@ -18,7 +18,7 @@
 
 void print_help()
 {
-    printf("Usage: dpcpp [system...] [module] [module...]\n");
+    printf("Usage: dpapp [system...] [external...] [module] [module...]\n");
     printf(DPAPP_ARG_HELP);
 
 #if DPAPP_HAS_CWC
