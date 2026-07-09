@@ -20,7 +20,7 @@
 
 ### API 文档
 
-构建启用 `DPAPP_WITH_DOCS`（默认 ON）后生成 Doxygen HTML：
+构建启用 `DPAPP_WITH_DOCS`（默认 OFF）后生成 Doxygen HTML：
 
 ```shell
 cmake --build build --target doxygen_doc

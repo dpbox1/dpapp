@@ -76,7 +76,7 @@ make -j8 && make install
 | `DPAPP_WITH_LUA` | ON | dplua + LuaJIT |
 | `DPAPP_COMPILE_LUA` | ON | Lua 脚本编译为字节码（`luajit -b`）；依赖 `DPAPP_WITH_LUA` |
 | `DPAPP_WITH_TESTS` | ON | 测试用例 |
-| `DPAPP_WITH_DOCS` | ON | Doxygen HTML（需 `doxygen`） |
+| `DPAPP_WITH_DOCS` | OFF | Doxygen HTML（需 `doxygen`） |
 
 
 安装生成的 `dpapp_config.h` 定义 `DPAPP_*_ENABLE` 与 `DPAPP_HAS_*` 宏（如 `DPAPP_HAS_LUA`），供 `#if` 条件编译。

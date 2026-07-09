@@ -49,10 +49,9 @@ dpcwcd
 dpnetd
 var/*
 lsquic_example
-build/*
-build-*
 build
-build_asan*
+build-*
+build_*
 openresty*
 
 tmp
