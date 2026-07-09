@@ -1,0 +1,9 @@
+InlayHints:
+  Enabled: No
+  ParameterNames: No
+  DeducedTypes: No
+Diagnostics:
+  UnusedIncludes: None
+  Suppress: ['-Wc23-extensions', 'modernize-deprecated-headers']
+CompileFlags:
+  Add: ["-Wno-missing-parameter-name"]

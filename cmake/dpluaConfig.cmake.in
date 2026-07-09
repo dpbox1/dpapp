@@ -1,0 +1,49 @@
+# dpluaConfig.cmake - CMake package config for dplua
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+get_filename_component(_dplua_cmake_dir "${CMAKE_CURRENT_LIST_DIR}" DIRECTORY)
+list(APPEND CMAKE_PREFIX_PATH "${_dplua_cmake_dir}/dpapp")
+find_dependency(dpapp REQUIRED PATHS "${_dplua_cmake_dir}/dpapp")
+
+set(DPLUA_INCLUDE_DIR "${PACKAGE_PREFIX_DIR}/usr/include")
+set(DPLUA_LUAJIT_INCLUDE_DIR "${PACKAGE_PREFIX_DIR}/usr/include/luajit-2.1")
+
+find_library(DPLUA_LUAJIT_LIBRARY
+    NAMES luajit-5.1
+    PATHS "${PACKAGE_PREFIX_DIR}/usr/lib" "${PACKAGE_PREFIX_DIR}/lib"
+    NO_DEFAULT_PATH
+)
+if(DPLUA_LUAJIT_LIBRARY)
+    get_filename_component(_lj_real "${DPLUA_LUAJIT_LIBRARY}" REALPATH)
+    if(EXISTS "${_lj_real}" AND NOT _lj_real MATCHES "\\.a$")
+        set(DPLUA_LUAJIT_LIBRARY "${_lj_real}")
+    else()
+        unset(DPLUA_LUAJIT_LIBRARY)
+        file(GLOB _lj_candidates
+            "${PACKAGE_PREFIX_DIR}/usr/lib/libluajit-5.1.so"
+            "${PACKAGE_PREFIX_DIR}/usr/lib/libluajit-5.1.so.*"
+        )
+        foreach(_c IN LISTS _lj_candidates)
+            if(_c MATCHES "\\.a$")
+                continue()
+            endif()
+            get_filename_component(_real "${_c}" REALPATH)
+            if(EXISTS "${_real}")
+                set(DPLUA_LUAJIT_LIBRARY "${_real}")
+                break()
+            endif()
+        endforeach()
+    endif()
+endif()
+if(NOT DPLUA_LUAJIT_LIBRARY)
+    message(FATAL_ERROR "dplua: libluajit-5.1 shared library not found under ${PACKAGE_PREFIX_DIR}/usr/lib")
+endif()
+if(NOT EXISTS "${DPLUA_LUAJIT_INCLUDE_DIR}/luajit.h")
+    message(FATAL_ERROR "dplua: luajit headers not found under ${DPLUA_LUAJIT_INCLUDE_DIR}")
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/dpluaTargets.cmake")
+
+check_required_components(dplua)

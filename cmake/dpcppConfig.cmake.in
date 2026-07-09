@@ -1,0 +1,25 @@
+# dpcppConfig.cmake - CMake package config for dpcpp
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# dpcpp builds on top of dpapp (and transitively dpaco via implementation)
+# Set search path for dependencies to the same location as dpcpp
+# This ensures dependencies are found in the same prefix structure
+get_filename_component(_dpcpp_cmake_dir "${CMAKE_CURRENT_LIST_DIR}" DIRECTORY)
+list(APPEND CMAKE_PREFIX_PATH "${_dpcpp_cmake_dir}/dpapp")
+find_dependency(dpapp REQUIRED PATHS "${_dpcpp_cmake_dir}/dpapp")
+
+# dpcppTargets.cmake 导出 INTERFACE_LINK_LIBRARIES 含 ucoro::ucoro，须先加载 ucoro 包
+list(APPEND CMAKE_PREFIX_PATH "${PACKAGE_PREFIX_DIR}/usr")
+find_dependency(ucoro REQUIRED)
+
+# Set include directory variable for compatibility
+# PACKAGE_PREFIX_DIR is set by @PACKAGE_INIT@ and equals the install prefix
+set(DPCPP_INCLUDE_DIR "${PACKAGE_PREFIX_DIR}/usr/include")
+
+# Imported targets are defined in this file (includes PUBLIC include directories)
+# The INTERFACE_INCLUDE_DIRECTORIES property will contain _IMPORT_PREFIX/usr/include
+include("${CMAKE_CURRENT_LIST_DIR}/dpcppTargets.cmake")
+
+check_required_components(dpcpp)

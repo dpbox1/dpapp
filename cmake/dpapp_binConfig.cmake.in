@@ -1,0 +1,45 @@
+# dpapp_binConfig.cmake - header-only SDK for building dpapp_bin modules
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Set search path for dependencies to the same location as dpapp_bin
+# This ensures dependencies are found in the same prefix structure
+get_filename_component(_dpapp_bin_cmake_dir "${CMAKE_CURRENT_LIST_DIR}" DIRECTORY)
+list(APPEND CMAKE_PREFIX_PATH "${_dpapp_bin_cmake_dir}/dpapp")
+
+# dpapp_bin can depend on dpcpp, dpcwc, or both depending on build configuration
+# Conditionally find dependencies based on what was built
+# @DPAPP_CPP_ENABLE@ and @DPAPP_CWC_ENABLE@ are set to 0 or 1 at configure time (CMakeLists.txt)
+if(@DPAPP_CPP_ENABLE@)
+    list(APPEND CMAKE_PREFIX_PATH "${_dpapp_bin_cmake_dir}/dpcpp")
+    find_dependency(dpcpp REQUIRED PATHS "${_dpapp_bin_cmake_dir}/dpcpp")
+endif()
+
+if(@DPAPP_CWC_ENABLE@)
+    list(APPEND CMAKE_PREFIX_PATH "${_dpapp_bin_cmake_dir}/dpcwc")
+    list(APPEND CMAKE_PREFIX_PATH "${_dpapp_bin_cmake_dir}/dpaco")
+    find_dependency(dpcwc REQUIRED PATHS "${_dpapp_bin_cmake_dir}/dpcwc")
+    # Note: dpcwc will automatically find dpaco and dpapp as its dependencies
+endif()
+
+# Always find dpapp as it's the base dependency for all modes
+find_dependency(dpapp REQUIRED PATHS "${_dpapp_bin_cmake_dir}/dpapp")
+
+# Set variables to indicate which modes are supported
+# These can be checked by users after find_package(dpapp_bin)
+set(DPAPP_HAS_CPP @DPAPP_CPP_ENABLE@)
+set(DPAPP_HAS_CWC @DPAPP_CWC_ENABLE@)
+set(DPAPP_HAS_LUA @DPAPP_LUA_ENABLE@)
+
+# dpcpp / dpapp 相关头文件安装在 <prefix>/usr/include
+set(dpapp_bin_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/usr/include")
+
+if(NOT TARGET dpbox::dpapp_bin)
+    add_library(dpbox::dpapp_bin INTERFACE IMPORTED)
+    set_target_properties(dpbox::dpapp_bin PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${dpapp_bin_INCLUDE_DIRS}"
+    )
+endif()
+
+check_required_components(dpapp_bin)
