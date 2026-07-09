@@ -1,5 +1,20 @@
 include(dplua_compiler)
 
+# 清空目录内容，保留目录本身（configure 时清理 stage 用）
+function(dpapp_stage_clean_dir dir)
+    if(NOT EXISTS "${dir}")
+        return()
+    endif()
+    if(NOT IS_DIRECTORY "${dir}")
+        file(REMOVE "${dir}")
+        return()
+    endif()
+    file(GLOB _entries "${dir}/*")
+    foreach(_entry IN LISTS _entries)
+        file(REMOVE_RECURSE "${_entry}")
+    endforeach()
+endfunction()
+
 # stage 下 cmake 包路径（与安装布局 usr/lib/cmake/<pkg> 对齐）
 function(dpapp_stage_cmake_dir pkg out_var)
     set(${out_var} "${DPAPP_STAGE_DIR}/usr/lib/cmake/${pkg}" PARENT_SCOPE)

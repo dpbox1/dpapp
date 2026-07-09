@@ -21,6 +21,7 @@ local dptcp = require("dptcp")
 local dpuds = require("dpuds")
 local dpqic = require("dpqic")
 local dpasc = require("dpasc")
+local dpssl = require("dpssl")
 
 local dpret_iserr = dpret.iserr
 
@@ -30,12 +31,11 @@ local function _tcp_accept_loop(listener, handler, ssl_group, start_args)
     while true do
         local peer, err = dptcp.accept(listener)
         if not peer then
-            dplog.warn("server", "tcp accept error: %d", err)
+            dplog.warn("dpsvr", "tcp accept error: %d", err)
             break
         end
 
         if ssl_group then
-            local dpssl = require("dpssl")
             local ssn = dpssl.server(peer, ssl_group)
             if ssn then
                 peer = ssn
@@ -50,7 +50,7 @@ local function _uds_accept_loop(listener, handler, start_args)
     while true do
         local peer, err = dpuds.accept(listener)
         if not peer then
-            dplog.warn("server", "uds accept error: %d", err)
+            dplog.warn("dpsvr", "uds accept error: %d", err)
             break
         end
 
@@ -62,7 +62,7 @@ local function _qic_accept_loop(listener, handler, start_args)
     while true do
         local conn, err = dpasc.qic_accept(listener)
         if not conn then
-            dplog.warn("server", "quic accept error: %d", err)
+            dplog.warn("dpsvr", "quic accept error: %d", err)
             break
         end
 
@@ -78,11 +78,11 @@ local function _start_tcp(p)
 
     local listener, err = dptcp.listen(p.host, p.port)
     if not listener then
-        dplog.error("server", "tcp listen failed(%d): %s:%d", err, p.host, p.port)
+        dplog.error("dpsvr", "tcp listen failed(%d): %s:%d", err, p.host, p.port)
         return
     end
 
-    dplog.notice("server", "tcp server(ssl:%s) started on %s:%d",
+    dplog.notice("dpsvr", "tcp server(ssl:%s) started on %s:%d",
         ssl_group or "false", p.host, p.port)
 
     coroutine.wrap(_tcp_accept_loop)(listener, p.handler, ssl_group, p.start_args)
@@ -91,41 +91,41 @@ end
 local function _start_uds(p)
     local listener, err = dpuds.listen(p.host)
     if not listener then
-        dplog.error("server", "uds listen failed(%d): %s", err, p.host)
+        dplog.error("dpsvr", "uds listen failed(%d): %s", err, p.host)
         return
     end
 
-    dplog.notice("server", "uds server started on %s", p.host)
+    dplog.notice("dpsvr", "uds server started on %s", p.host)
 
     coroutine.wrap(_uds_accept_loop)(listener, p.handler, p.start_args)
 end
 
 local function _start_qic(p)
     if not dpqic or not dpqic.enable() then
-        dplog.error("server", "quic disabled at build time")
+        dplog.error("dpsvr", "quic disabled at build time")
         return
     end
 
     local group = p.ssl and tostring(p.ssl) or nil
     if not group or group == "" then
-        dplog.error("server", "qic listener requires ssl group")
+        dplog.error("dpsvr", "qic listener requires ssl group")
         return
     end
 
     local ret = dpqic.add_engine(group, nil)
     if dpret_iserr(ret) then
-        dplog.error("server", "quic engine add failed(%d): %s", ret, group)
+        dplog.error("dpsvr", "quic engine add failed(%d): %s", ret, group)
         return
     end
 
     local listener, err = dpqic.listen(group, p.host, p.port)
     if not listener then
-        dplog.error("server", "quic listen failed(%d): %s:%d/%s", err, p.host,
+        dplog.error("dpsvr", "quic listen failed(%d): %s:%d/%s", err, p.host,
             p.port, group)
         return
     end
 
-    dplog.notice("server", "quic server started on %s:%d/%s", p.host, p.port, group)
+    dplog.notice("dpsvr", "quic server started on %s:%d/%s", p.host, p.port, group)
 
     coroutine.wrap(_qic_accept_loop)(listener, p.handler, p.start_args)
 end
@@ -136,13 +136,21 @@ function M.start(params)
     for _, p in ipairs(params) do
         local t = p.type or p.protocol or "tcp"
         if t == "tcp" then
-            coroutine.wrap(_start_tcp)(p)
+            if p.ssl and not dpssl.enable() then
+                dplog.warn("dpsvr", "Not support ssl")
+            else
+                coroutine.wrap(_start_tcp)(p)
+            end
         elseif t == "uds" then
             coroutine.wrap(_start_uds)(p)
         elseif t == "qic" then
-            coroutine.wrap(_start_qic)(p)
+            if dpqic.enable() then
+                coroutine.wrap(_start_qic)(p)
+            else
+                dplog.warn("dpsvr", "Not support quic")
+            end
         else
-            dplog.error("server", "unknown type: %s", t)
+            dplog.error("dpsvr", "unknown type: %s", t)
         end
     end
 end

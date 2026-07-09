@@ -104,13 +104,9 @@ endif()
 set(DPAPP_STAGE_DIR "${CMAKE_BINARY_DIR}/stage" CACHE INTERNAL "")
 set(DPAPP_DEV_ROOT "${DPAPP_STAGE_DIR}" CACHE INTERNAL "")
 
-# 重新 configure 时清空 stage，避免陈旧产物与布局冲突
-if(EXISTS "${DPAPP_STAGE_DIR}")
-    file(REMOVE_RECURSE "${DPAPP_STAGE_DIR}")
-endif()
-if(EXISTS "${CMAKE_BINARY_DIR}/stage_layout")
-    file(REMOVE_RECURSE "${CMAKE_BINARY_DIR}/stage_layout")
-endif()
+# 重新 configure 时清空 stage 内容，避免陈旧产物与布局冲突（保留 stage 目录）
+dpapp_stage_clean_dir("${DPAPP_STAGE_DIR}")
+dpapp_stage_clean_dir("${CMAKE_BINARY_DIR}/stage_layout")
 
 # 安装时先同步 stage，再由 install(TARGETS/EXPORT) 覆盖库与 cmake Targets
 # 分项 DESTINATION 避免 DESTINATION . 产生 ${PREFIX}/./ 路径

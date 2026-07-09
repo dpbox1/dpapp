@@ -108,6 +108,8 @@ const dpasc_t* dpqic_send_hdrset();
 local C = ffi.C
 local ffi_new = ffi.new
 local AEXEC = dplua.aexec
+local dpssl = require("dpssl")
+local dpqic = require("dpqic")
 
 local M = {}
 
@@ -174,21 +176,25 @@ M.aio_read_data_type = C.dpaio_read_data()
 M.aio_write_data_type = C.dpaio_write_data()
 
 -- SSL
-M.ssl_handshake_type = C.dpssl_handshake()
-M.ssl_shutdown_type = C.dpssl_shutdown()
-M.ssl_recv_type = C.dpssl_recv()
-M.ssl_send_type = C.dpssl_send()
+if dpssl.enable() then
+    M.ssl_handshake_type = C.dpssl_handshake()
+    M.ssl_shutdown_type = C.dpssl_shutdown()
+    M.ssl_recv_type = C.dpssl_recv()
+    M.ssl_send_type = C.dpssl_send()
+end
 
 -- QIC
-M.qic_connect_type = C.dpqic_connect()
-M.qic_stream_type = C.dpqic_stream()
-M.qic_accept_type = C.dpqic_accept()
-M.qic_recv_type = C.dpqic_recv()
-M.qic_send_type = C.dpqic_send()
-M.qic_recvv_type = C.dpqic_recvv()
-M.qic_sendv_type = C.dpqic_sendv()
-M.qic_recv_hdrset_type = C.dpqic_recv_hdrset()
-M.qic_send_hdrset_type = C.dpqic_send_hdrset()
+if dpqic.enable() then
+    M.qic_connect_type = C.dpqic_connect()
+    M.qic_stream_type = C.dpqic_stream()
+    M.qic_accept_type = C.dpqic_accept()
+    M.qic_recv_type = C.dpqic_recv()
+    M.qic_send_type = C.dpqic_send()
+    M.qic_recvv_type = C.dpqic_recvv()
+    M.qic_sendv_type = C.dpqic_sendv()
+    M.qic_recv_hdrset_type = C.dpqic_recv_hdrset()
+    M.qic_send_hdrset_type = C.dpqic_send_hdrset()
+end
 
 local ffi_cast = ffi.cast
 local dpret = require("dpret")
@@ -980,116 +986,122 @@ function M.aio_read_until(ele, buf, until_s, max_len_)
 end
 
 -- ============================== SSL ==============================
+if dpssl.enable() then
 
---- dpssl_handshake: 无额外参数
-function M.ssl_handshake(ele)
-    return AEXEC(ele, M.ssl_handshake_type)
+    --- dpssl_handshake: 无额外参数
+    function M.ssl_handshake(ele)
+        return AEXEC(ele, M.ssl_handshake_type)
+    end
+
+    --- dpssl_shutdown: 无额外参数
+    function M.ssl_shutdown(ele)
+        return AEXEC(ele, M.ssl_shutdown_type)
+    end
+
+    --- dpssl_recv: (buf, int len_)
+    function M.ssl_recv(ele, buf, len_)
+        return _aexec_recv(ele, M.ssl_recv_type, buf, len_)
+    end
+
+    --- dpssl_send: (buf, int len_)
+    function M.ssl_send(ele, buf, len_)
+        return _aexec_send(ele, M.ssl_send_type, buf, len_)
+    end
+
 end
-
---- dpssl_shutdown: 无额外参数
-function M.ssl_shutdown(ele)
-    return AEXEC(ele, M.ssl_shutdown_type)
-end
-
---- dpssl_recv: (buf, int len_)
-function M.ssl_recv(ele, buf, len_)
-    return _aexec_recv(ele, M.ssl_recv_type, buf, len_)
-end
-
---- dpssl_send: (buf, int len_)
-function M.ssl_send(ele, buf, len_)
-    return _aexec_send(ele, M.ssl_send_type, buf, len_)
-end
-
 -- ============================== QIC ==============================
 
---- dpqic_connect: (const char* sni, const char* token, dpele_t** conn_out)
-function M.qic_connect(ele, sni, token)
-    if not sni then
-        return DPE_INVAL
-    end
-    local conn_ptr = ffi_new("dpele_t*[1]")
-    local ret = AEXEC(ele, M.qic_connect_type, tostring(sni),
-        token and tostring(token) or nil, conn_ptr)
-    if dpret.isok(ret) then
-        return conn_ptr[0]
-    end
-    return nil, ret
-end
+if dpqic.enable() then
 
---- dpqic_accept: (dpele_t** conn_out)
-function M.qic_accept(ele)
-    local conn_ptr = ffi_new("dpele_t*[1]")
-    local ret = AEXEC(ele, M.qic_accept_type, conn_ptr)
-    if dpret.isok(ret) then
-        return conn_ptr[0]
+    --- dpqic_connect: (const char* sni, const char* token, dpele_t** conn_out)
+    function M.qic_connect(ele, sni, token)
+        if not sni then
+            return DPE_INVAL
+        end
+        local conn_ptr = ffi_new("dpele_t*[1]")
+        local ret = AEXEC(ele, M.qic_connect_type, tostring(sni),
+            token and tostring(token) or nil, conn_ptr)
+        if dpret.isok(ret) then
+            return conn_ptr[0]
+        end
+        return nil, ret
     end
-    return nil, ret
-end
 
---- dpqic_stream: (dpele_t** stm_out, bool create_new)
-function M.qic_stream(ele, create_new)
-    local stm_ptr = ffi_new("dpele_t*[1]")
-    create_new = ffi_cast("bool", create_new == true)
-    local ret = AEXEC(ele, M.qic_stream_type, stm_ptr, create_new)
-    if dpret.isok(ret) then
-        return stm_ptr[0]
+    --- dpqic_accept: (dpele_t** conn_out)
+    function M.qic_accept(ele)
+        local conn_ptr = ffi_new("dpele_t*[1]")
+        local ret = AEXEC(ele, M.qic_accept_type, conn_ptr)
+        if dpret.isok(ret) then
+            return conn_ptr[0]
+        end
+        return nil, ret
     end
-    return nil, ret
-end
 
---- dpqic_recv: (buf, int len_)
-function M.qic_recv(ele, buf, len_)
-    return _aexec_recv(ele, M.qic_recv_type, buf, len_)
-end
+    --- dpqic_stream: (dpele_t** stm_out, bool create_new)
+    function M.qic_stream(ele, create_new)
+        local stm_ptr = ffi_new("dpele_t*[1]")
+        create_new = ffi_cast("bool", create_new == true)
+        local ret = AEXEC(ele, M.qic_stream_type, stm_ptr, create_new)
+        if dpret.isok(ret) then
+            return stm_ptr[0]
+        end
+        return nil, ret
+    end
 
---- dpqic_send: (buf, int len_) — buf 为 dpbuf/string/cdata，len_ 可省略
-function M.qic_send(ele, buf, len_)
-    return _aexec_send(ele, M.qic_send_type, buf, len_)
-end
+    --- dpqic_recv: (buf, int len_)
+    function M.qic_recv(ele, buf, len_)
+        return _aexec_recv(ele, M.qic_recv_type, buf, len_)
+    end
 
---- dpqic_recvv: (struct iovec* iov, int iovcnt)
-function M.qic_recvv(ele, iov, iovcnt)
-    if not (iov and iovcnt and type(iov) == 'cdata') then
-        return DPE_INVAL
+    --- dpqic_send: (buf, int len_) — buf 为 dpbuf/string/cdata，len_ 可省略
+    function M.qic_send(ele, buf, len_)
+        return _aexec_send(ele, M.qic_send_type, buf, len_)
     end
-    iov = ffi_cast("struct iovec*", iov)
-    iovcnt = _as_int(iovcnt)
-    if not iovcnt then
-        return DPE_INVAL
-    end
-    return AEXEC(ele, M.qic_recvv_type, iov, iovcnt)
-end
 
---- dpqic_sendv: (struct iovec* iov, int iovcnt)
-function M.qic_sendv(ele, iov, iovcnt)
-    if not (iov and iovcnt and type(iov) == 'cdata') then
-        return DPE_INVAL
+    --- dpqic_recvv: (struct iovec* iov, int iovcnt)
+    function M.qic_recvv(ele, iov, iovcnt)
+        if not (iov and iovcnt and type(iov) == 'cdata') then
+            return DPE_INVAL
+        end
+        iov = ffi_cast("struct iovec*", iov)
+        iovcnt = _as_int(iovcnt)
+        if not iovcnt then
+            return DPE_INVAL
+        end
+        return AEXEC(ele, M.qic_recvv_type, iov, iovcnt)
     end
-    iov = ffi_cast("struct iovec*", iov)
-    iovcnt = _as_int(iovcnt)
-    if not iovcnt then
-        return DPE_INVAL
-    end
-    return AEXEC(ele, M.qic_sendv_type, iov, iovcnt)
-end
 
---- dpqic_recv_hdrset: (dpqic_hdrset_t** hdrset_out)
-function M.qic_recv_hdrset(ele)
-    local hdrset_ptr = ffi_new("dpqic_hdrset_t*[1]")
-    local ret = AEXEC(ele, M.qic_recv_hdrset_type, hdrset_ptr)
-    if dpret.isok(ret) then
-        return hdrset_ptr[0]
+    --- dpqic_sendv: (struct iovec* iov, int iovcnt)
+    function M.qic_sendv(ele, iov, iovcnt)
+        if not (iov and iovcnt and type(iov) == 'cdata') then
+            return DPE_INVAL
+        end
+        iov = ffi_cast("struct iovec*", iov)
+        iovcnt = _as_int(iovcnt)
+        if not iovcnt then
+            return DPE_INVAL
+        end
+        return AEXEC(ele, M.qic_sendv_type, iov, iovcnt)
     end
-    return nil, ret
-end
 
---- dpqic_send_hdrset: (const dpqic_hdrset_t* hdrset)
-function M.qic_send_hdrset(ele, hdrset)
-    if not (hdrset and type(hdrset) == 'cdata') then
-        return DPE_INVAL
+    --- dpqic_recv_hdrset: (dpqic_hdrset_t** hdrset_out)
+    function M.qic_recv_hdrset(ele)
+        local hdrset_ptr = ffi_new("dpqic_hdrset_t*[1]")
+        local ret = AEXEC(ele, M.qic_recv_hdrset_type, hdrset_ptr)
+        if dpret.isok(ret) then
+            return hdrset_ptr[0]
+        end
+        return nil, ret
     end
-    return AEXEC(ele, M.qic_send_hdrset_type, hdrset)
+
+    --- dpqic_send_hdrset: (const dpqic_hdrset_t* hdrset)
+    function M.qic_send_hdrset(ele, hdrset)
+        if not (hdrset and type(hdrset) == 'cdata') then
+            return DPE_INVAL
+        end
+        return AEXEC(ele, M.qic_send_hdrset_type, hdrset)
+    end
+
 end
 
 return M
