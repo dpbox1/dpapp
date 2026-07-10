@@ -146,17 +146,17 @@ const char* dplog_lname(dplog_level_e l)
 
 dplog_level_e dplog_namel(const char* n)
 {
-    if (strcmp(n, "debug") == 0 || strcmp(n, "DEBUG") == 0) {
+    if (strcasecmp(n, "debug") == 0) {
         return DPLOG_L_DEBUG;
-    } else if (strcmp(n, "info") == 0 || strcmp(n, "INFO") == 0) {
+    } else if (strcasecmp(n, "info") == 0) {
         return DPLOG_L_INFO;
-    } else if (strcmp(n, "notice") == 0 || strcmp(n, "NOTICE") == 0) {
+    } else if (strcasecmp(n, "notice") == 0) {
         return DPLOG_L_NOTICE;
-    } else if (strcmp(n, "warning") == 0 || strcmp(n, "WARNING") == 0) {
+    } else if (strcasecmp(n, "warning") == 0) {
         return DPLOG_L_WARN;
-    } else if (strcmp(n, "error") == 0 || strcmp(n, "ERROR") == 0) {
+    } else if (strcasecmp(n, "error") == 0) {
         return DPLOG_L_ERROR;
-    } else if (strcmp(n, "alert") == 0 || strcmp(n, "ALERT") == 0) {
+    } else if (strcasecmp(n, "alert") == 0) {
         return DPLOG_L_ALERT;
     } else {
         return DPLOG_L_ALERT;

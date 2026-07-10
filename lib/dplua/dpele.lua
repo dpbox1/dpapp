@@ -269,7 +269,7 @@ end
 local MT = {
     [C.DPELE_TYPE_EFD] = EFD,
     [C.DPELE_TYPE_CTC] = CTC,
-    [C.DPELE_TYPE_USD] = EFD,
+    [C.DPELE_TYPE_USD] = {},
     [C.DPELE_TYPE_TMR] = TMR,
 }
 
