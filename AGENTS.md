@@ -94,7 +94,6 @@
 - 指令有歧义时，直接提出由用户选择或解决
 - 修改 BUG 或添加功能后，检查其他语言绑定层是否有相同问题或需要相同功能
 - 修改完成后编译验证（使用 `.vscode/settings.json` 中 cmake 选项）
-- 编译需代理时先执行 `clashproxy on`
 - 用户未指定时不运行测试用例
 - 必要时更新 `README.md`、`doc/*.md`
 - 执行结束后提供系统性的下一步建议（数字编号）
@@ -102,10 +101,6 @@
 
 ## GIT 规范
 
-- 使用中文撰写提交说明
-- 提交说明正文控制在 100 字以内，写清「为什么」而非堆砌文件名
-- **作者仅保留本地 Git 用户**（`user.name` / `user.email`），不得出现 AI、Cursor 等共同作者
-- **禁止**在提交说明中加入 `Co-authored-by:`、`Signed-off-by:`（AI）等署名 trailer；若 Cursor/Agent 自动追加，提交或推送前必须删除
-- Agent 代提交时：提交后执行 `git log -1 --format=%B` 检查；若含 `Co-authored-by: Cursor` 等行，须 `git commit --amend` 去掉后再推送
+- 使用中文撰写提交说明,控制在 100 字以内，写清「为什么」而非堆砌文件名
 - 无关修改分开提交（例如代码修复与 `AGENTS.md` 文档更新应分两次 commit）
-- 未经用户明确要求，不要 `git push`；用户要求推送时再用 `--force-with-lease` 改写已推送历史
+- **作者仅保留本地 Git 用户**（`user.name` / `user.email`），不得出现 AI等共同作者,**禁止**在提交说明中加入 `Co-authored-by:`、`Signed-off-by:`（AI）等署名 trailer；

@@ -29,10 +29,11 @@
  */
 
 /** @file dprbt.h
- *  @brief NetBSD/OpenBSD 树宏库：splay 树与 rank-balanced（红黑类）二叉搜索树。
+ *  @brief NetBSD/OpenBSD tree macros: splay trees and rank-balanced BSTs.
  *
- *  纯 C 宏实现，无运行时 API；通过 `RB_*`/`SPLAY_*` 在编译期生成内联函数。
- *  源自 `sys/tree.h`，供 dpapp 内有序容器使用。 */
+ *  Pure C macro implementation with no runtime API; `RB_*`/`SPLAY_*` generate
+ *  inline functions at compile time. Derived from `sys/tree.h` for ordered
+ *  containers in dpapp. */
 
 // clang-format off
 
@@ -43,38 +44,45 @@
 #include <stdint.h>
 
 /*
- * 本文件定义了多种树的数据结构：splay 树和 rank-balanced 树。
+ * This file defines data structures for different types of trees:
+ * splay trees and rank-balanced trees.
  *
- * splay 树是一种自组织数据结构。每次操作都会触发一次 splay，
- * 将请求节点移动到树根并部分重新平衡。
+ * A splay tree is a self-organizing data structure.  Every operation
+ * on the tree causes a splay to happen.  The splay moves the requested
+ * node to the root of the tree and partly rebalances it.
  *
- * 其好处在于请求局部性使查找更快——被请求的节点移向树顶。
- * 但每次查找都会产生内存写操作。
+ * This has the benefit that request locality causes faster lookups as
+ * the requested nodes move to the top of the tree.  On the other hand,
+ * every lookup causes memory writes.
  *
- * 平衡定理：对初始空树，m 次操作和 n 次插入的总访问时间
- * 上界为 O((m + n)lg n)。splay 树 m 次访问的摊销成本为 O(lg n)。
+ * The Balance Theorem bounds the total access time for m operations
+ * and n inserts on an initially empty tree as O((m + n)lg n).  The
+ * amortized cost for a sequence of m accesses to a splay tree is O(lg n);
  *
- * rank-balanced 树是一种二叉搜索树，以整数 rank-difference
- * 作为从父到子指针的属性。任意节点到 null 路径上的
- * rank-difference 之和相同，定义该节点的 rank。null 节点的 rank 为 -1。
+ * A rank-balanced tree is a binary search tree with an integer
+ * rank-difference as an attribute of each pointer from parent to child.
+ * The sum of the rank-differences on any path from a node down to null is
+ * the same, and defines the rank of that node. The rank of the null node
+ * is -1.
  *
- * 不同的附加条件定义不同类型的平衡树，包括"红黑"和"AVL"树。
- * 此处应用的条件是 Haeupler, Sen 和 Tarjan 在 ACM Transactions on
- * Algorithms Volume 11 Issue 4 June 2015 中提出的"weak-AVL"条件：
- *    - 每个 rank-difference 为 1 或 2。
- *    - 任何叶子的 rank 为 1。
+ * Different additional conditions define different sorts of balanced
+ * trees, including "red-black" and "AVL" trees.  The set of conditions
+ * applied here are the "weak-AVL" conditions of Haeupler, Sen and Tarjan:
+ *    - every rank-difference is 1 or 2.
+ *    - the rank of any leaf is 1.
  *
- * 由于历史原因，偶数值 rank-difference 与红色（Rank-Even-Difference）
- * 关联，红色边指向的子节点称为红色子节点。
+ * For historical reasons, rank differences that are even are associated
+ * with the color red (Rank-Even-Difference), and the child that a red edge
+ * points to is called a red child.
  *
- * rank-balanced 树的每次操作上界为 O(lg n)。
- * 树的最大高度为 2lg (n+1)。
+ * Every operation on a rank-balanced tree is bounded as O(lg n).
+ * The maximum height of a rank-balanced tree is 2lg (n+1).
  */
 
 #define SPLAY_HEAD(name, type)                                                      \
     struct name                                                                     \
     {                                                                               \
-        struct type* sph_root; /* 树根 */                               \
+        struct type* sph_root; /* root of the tree */                               \
     }
 
 #define SPLAY_INITIALIZER(root)                                                     \
@@ -90,8 +98,8 @@
 #define SPLAY_ENTRY(type)                                                           \
     struct                                                                          \
     {                                                                               \
-        struct type* spe_left;  /* 左子节点 */                                   \
-        struct type* spe_right; /* 右子节点 */                                 \
+        struct type* spe_left;  /* left element */                                   \
+        struct type* spe_right; /* right element */                                 \
     }
 
 #define SPLAY_LEFT(elm, field)  (elm)->field.spe_left
@@ -99,7 +107,7 @@
 #define SPLAY_ROOT(head)        (head)->sph_root
 #define SPLAY_EMPTY(head)       (SPLAY_ROOT(head) == NULL)
 
-/* SPLAY_ROTATE_{LEFT,RIGHT} 假设 tmp 持有 SPLAY_{RIGHT,LEFT} */
+/* SPLAY_ROTATE_{LEFT,RIGHT} expect that tmp hold SPLAY_{RIGHT,LEFT} */
 #define SPLAY_ROTATE_RIGHT(head, tmp, field)                                        \
     do {                                                                            \
         SPLAY_LEFT((head)->sph_root, field) = SPLAY_RIGHT(tmp, field);              \
@@ -136,7 +144,7 @@
         SPLAY_RIGHT((head)->sph_root, field) = SPLAY_LEFT(node, field);             \
     } while (/*CONSTCOND*/ 0)
 
-/* 生成原型和内联函数 */
+/* Generates prototypes and inline functions */
 
 #define SPLAY_PROTOTYPE(name, type, field, cmp)                                     \
     void name##_SPLAY(struct name*, struct type*);                                  \
@@ -144,7 +152,7 @@
     struct type* name##_SPLAY_INSERT(struct name*, struct type*);                   \
     struct type* name##_SPLAY_REMOVE(struct name*, struct type*);                   \
                                                                                     \
-    /* 查找与 elm 键值相同的节点 */                                   \
+    /* Finds the node with the same key as elm */                                   \
     static __unused __inline struct type* name##_SPLAY_FIND(struct name* head,      \
         struct type* elm)                                                           \
     {                                                                               \
@@ -177,8 +185,8 @@
         return (SPLAY_ROOT(head));                                                  \
     }
 
-/* 主 splay 操作。
- * 将与 elm 键值接近的节点移到顶部
+/* Main splay operation.
+ * Moves node close to the key of elm to top
  */
 #define SPLAY_GENERATE(name, type, field, cmp)                                      \
     struct type* name##_SPLAY_INSERT(struct name* head, struct type* elm)           \
@@ -258,8 +266,8 @@
         SPLAY_ASSEMBLE(head, &__node, __left, __right, field);                      \
     }                                                                               \
                                                                                     \
-    /* 以最小或最大元素进行 splay
-     * 用于查找树中的最小或最大元素。
+    /* Splay with either the minimum or the maximum element
+     * Used to find the minimum or maximum element in the tree.
      */                                                                             \
     void name##_SPLAY_MINMAX(struct name* head, int __comp)                         \
     {                                                                               \
@@ -309,11 +317,11 @@
 #define SPLAY_FOREACH(x, name, head)                                                \
     for ((x) = SPLAY_MIN(name, head); (x) != NULL; (x) = SPLAY_NEXT(name, head, x))
 
-/* 定义 rank-balanced 树的宏 */
+/* Macros that define a rank-balanced tree */
 #define RB_HEAD(name, type)                                                         \
     struct name                                                                     \
     {                                                                               \
-        struct type* rbh_root; /* 树根 */                               \
+        struct type* rbh_root; /* root of the tree */                               \
     }
 
 #define RB_INITIALIZER(root)                                                        \
@@ -333,9 +341,10 @@
     }
 
 /*
- * 期望 struct type 的对象地址是 4 的倍数，因此指向该类型的
- * 指针最低 2 位始终为 0。本实现利用这些位来标记树节点
- * 的左子节点或右子节点为"红色"。
+ * Expects addresses of struct type objects to be a multiple of 4, so the
+ * least significant two bits of pointers to such types are always 0. This
+ * implementation uses these bits to mark a tree node's left or right child
+ * as "red".
  */
 #define _RB_LINK(elm, dir, field, op) (elm)->field op rbe_link[dir]
 #define _RB_UP(elm, field, op)        _RB_LINK(elm, 0, field, op)
@@ -365,9 +374,10 @@
     } while (/*CONSTCOND*/ 0)
 
 /*
- * RB_AUGMENT 或 RB_AUGMENT_CHECK 在每个被修改子树的根部以循环方式调用，
- * 从底向上直到根，用于更新增强节点数据。RB_AUGMENT_CHECK 仅在更新
- * 改变了节点数据时返回 true，以便在返回 false 时提前停止更新。
+ * RB_AUGMENT or RB_AUGMENT_CHECK is called in a loop at the root of each
+ * modified subtree, from the bottom up to the root, to update augmented node
+ * data. RB_AUGMENT_CHECK returns true only when the update changed node data,
+ * so updates can stop early when it returns false.
  */
 #ifndef RB_AUGMENT_CHECK
 #ifndef RB_AUGMENT
@@ -396,10 +406,14 @@
     } while (/*CONSTCOND*/ 0)
 
 /*
- * RB_ROTATE 宏部分重构树以改善平衡。当 dir 为 _RB_L 时，tmp 是 elm 的右子节点。
- * 旋转后，elm 成为 tmp 的左子节点，原本位于它们之间的子树（原挂载在 tmp 左侧）
- * 现在挂载在 elm 右侧。elm 与其原父节点的父子关系不变；此处宏不再更新那些字段，
- * 留给 RB_ROTATE 的调用者处理，以避免一对旋转操作两次以不同值更新同一对指针字段。
+ * The RB_ROTATE macro partially restructures the tree to improve balance.
+ * When dir is _RB_L, tmp is elm's right child. After rotation, elm becomes
+ * tmp's left child, and the subtree that was between them (formerly attached
+ * to the left of tmp) is now attached to the right of elm. The parent-child
+ * relationship between elm and its original parent is unchanged; this macro
+ * does not update those fields, leaving that to RB_ROTATE's caller, to avoid
+ * a pair of rotations updating the same pointer fields twice with different
+ * values.
  */
 #define RB_ROTATE(elm, tmp, dir, field, op)                                         \
     do {                                                                            \
@@ -411,7 +425,7 @@
         RB_SET_PARENT(elm, tmp, field, op);                                         \
     } while (/*CONSTCOND*/ 0)
 
-/* 生成原型和内联函数 */
+/* Generates prototypes and inline functions */
 #define RB_PROTOTYPE(name, type, field, cmp, op)                                    \
     RB_PROTOTYPE_INTERNAL(name, type, field, cmp, op, )
 #define RB_PROTOTYPE_STATIC(name, type, field, cmp, op)                             \
@@ -466,8 +480,8 @@
 #define RB_PROTOTYPE_REINSERT(name, type, attr)                                     \
     attr struct type* name##_RB_REINSERT(struct name*, struct type*)
 
-/* 主 RB 操作。
- * 将与 elm 键值接近的节点移到顶部
+/* Main RB operation.
+ * Moves node close to the key of elm to top
  */
 #define RB_GENERATE(name, type, field, cmp, op)                                     \
     RB_GENERATE_INTERNAL(name, type, field, cmp, op, )
@@ -497,8 +511,8 @@
 #endif
 #define RB_GENERATE_RANK(name, type, field, op, attr)                               \
     /*                                                                              \
-     * 返回以 elm 为根的子树 rank，如果子树不平衡或                                      \
-     * 增强数据不一致则返回 -1。                                                         \
+     * Returns the rank of the subtree rooted at elm, or -1 if the subtree is          \
+     * unbalanced or augmented data is inconsistent.                                   \
      */                                                                             \
     attr int name##_RB_RANK(struct type* elm)                                       \
     {                                                                               \
@@ -527,29 +541,30 @@
         struct type* parent, struct type* elm)                                      \
     {                                                                               \
         /*                                                                          \
-         * 初始时，elm 是叶子。其父节点之前可能是叶子（有两个黑色 null 子节点），          \
-         * 或者是有一个黑色非 null 子节点和一个红色 null 子节点的内部节点。                  \
-         * 平衡准则"任何叶子的 rank 为 1"排除了初始父节点有两个红色 null 子节点的可能性。       \
-         * 因此第一次循环迭代不会访问未初始化的 'child'，后续迭代仅在前一次                         \
-         * 已为 'child' 赋值时才会发生。                                                         \
+         * Initially, elm is a leaf. Its parent was either a leaf (with two black null   \
+         * children) or an internal node with one black non-null child and one red null  \
+         * child. The balance rule "rank of any leaf is 1" excludes the case where the   \
+         * initial parent has two red null children. Therefore the first loop iteration  \
+         * does not access uninitialized 'child'; later iterations only occur after       \
+         * 'child' was assigned in a previous iteration.                                 \
          */                                                                         \
         struct type *child = NULL, *child_up = NULL, *gpar = NULL;                  \
         uintptr_t elmdir, sibdir;                                                   \
                                                                                     \
         do {                                                                        \
-            /* 以 elm 为根的树 rank 增长了 */                           \
+            /* The tree rooted at elm grew in rank */                           \
             gpar = _RB_UP(parent, field, op);                                       \
             elmdir = RB_RIGHT(parent, field, op) == elm ? _RB_R : _RB_L;            \
             if (_RB_BITS(gpar) & elmdir) {                                          \
-                /* 缩短 parent-elm 边以重新平衡 */                      \
+                /* Shorten parent-elm edge to rebalance */                      \
                 _RB_BITSUP(parent, field, op) ^= elmdir;                            \
                 return (NULL);                                                      \
             }                                                                       \
             sibdir = elmdir ^ _RB_LR;                                               \
-            /* 另一条边必须改变长度 */                                 \
+            /* The other edge must change length */                                 \
             _RB_BITSUP(parent, field, op) ^= sibdir;                                \
             if ((_RB_BITS(gpar) & _RB_LR) == 0) {                                   \
-                /* 两条边都变短了，从 parent 重试 */                       \
+                /* Both edges shortened, retry from parent */                       \
                 child = elm;                                                        \
                 elm = parent;                                                       \
                 continue;                                                           \
@@ -564,8 +579,8 @@
                     _RB_BITSUP(elm, field, op) ^= _RB_LR;                           \
                 else                                                                \
                     _RB_BITSUP(elm, field, op) ^= elmdir;                           \
-                /* child 是叶子则不更新 elm 的增强数据，                         \
-                 * 因为之后它会被恢复为叶子。 */                                     \
+                /* Do not update elm's augmented data if child is a leaf,        \
+                 * since it will be restored to a leaf afterward. */                                     \
                 if ((_RB_BITS(child_up) & _RB_LR) == 0)                             \
                     elm = child;                                                    \
             } else                                                                  \
@@ -575,8 +590,8 @@
             _RB_UP(child, field, op) = gpar;                                        \
             RB_SWAP_CHILD(head, gpar, parent, child, field, op);                    \
             /*                                                                      \
-             * 向下旋转的元素获得了新的、更小的子树，                                    \
-             * 因此更新它们的增强数据。                                                   \
+             * Elements rotated down have a new, smaller subtree, so update their        \
+             * augmented data.                                                         \
              */                                                                     \
             if (elm != child)                                                       \
                 (void)RB_AUGMENT_CHECK(elm);                                        \
@@ -588,9 +603,10 @@
 
 #ifndef RB_STRICT_HST
 /*
- * 在 REMOVE_COLOR 中，HST 论文图 3 的单旋转情况下，'parent' 的 rank 高 1，
- * 如果 'parent' 变成叶子则降低其 rank。本实现始终让 parent 在新位置具有
- * 较低的 rank，以避免叶子检查。定义 RB_STRICT_HST 为 1 可获取 HST 描述的行为。
+ * In REMOVE_COLOR, for the single-rotation case in HST paper Figure 3, 'parent'
+ * has rank 1 higher and its rank is lowered if 'parent' becomes a leaf. This
+ * implementation always gives parent the lower rank at its new position to avoid
+ * leaf checks. Define RB_STRICT_HST as 1 to get the behavior described by HST.
  */
 #define RB_STRICT_HST 0
 #endif
@@ -604,25 +620,25 @@
                                                                                     \
         if (RB_RIGHT(parent, field, op) == elm                                      \
             && RB_LEFT(parent, field, op) == elm) {                                 \
-            /* 删除作为独子节点的叶子会创建一个                                      \
-             * rank-2 叶子。降低该叶子的 rank。 */                                    \
+            /* Deleting a leaf that was an only child creates a                      \
+             * rank-2 leaf. Lower that leaf's rank. */                                    \
             _RB_UP(parent, field, op) = _RB_PTR(_RB_UP(parent, field, op));         \
             elm = parent;                                                           \
             if ((parent = _RB_UP(elm, field, op)) == NULL)                          \
                 return (NULL);                                                      \
         }                                                                           \
         do {                                                                        \
-            /* 以 elm 为根的树 rank 缩小了 */                         \
+            /* The tree rooted at elm shrank in rank */                         \
             gpar = _RB_UP(parent, field, op);                                       \
             elmdir = RB_RIGHT(parent, field, op) == elm ? _RB_R : _RB_L;            \
             _RB_BITS(gpar) ^= elmdir;                                               \
             if (_RB_BITS(gpar) & elmdir) {                                          \
-                /* 延长 parent-elm 边以重新平衡 */                     \
+                /* Lengthen parent-elm edge to rebalance */                     \
                 _RB_UP(parent, field, op) = gpar;                                   \
                 return (NULL);                                                      \
             }                                                                       \
             if (_RB_BITS(gpar) & _RB_LR) {                                          \
-                /* 缩短另一条边，从 parent 重试 */                         \
+                /* Shorten the other edge, retry from parent */                         \
                 _RB_BITS(gpar) ^= _RB_LR;                                           \
                 _RB_UP(parent, field, op) = gpar;                                   \
                 gpar = _RB_PTR(gpar);                                               \
@@ -633,13 +649,13 @@
             up = _RB_UP(sib, field, op);                                            \
             _RB_BITS(up) ^= _RB_LR;                                                 \
             if ((_RB_BITS(up) & _RB_LR) == 0) {                                     \
-                /* 缩短从 sib 延伸的边，重试 */                      \
+                /* Shorten edge from sib, retry */                      \
                 _RB_UP(sib, field, op) = up;                                        \
                 continue;                                                           \
             }                                                                       \
             if ((_RB_BITS(up) & sibdir) == 0) {                                     \
                 elm = _RB_LINK(sib, elmdir, field, op);                             \
-                /* elm 是 1-child，先对 elm 旋转。 */                       \
+                /* elm is 1-child, rotate elm first. */                       \
                 RB_ROTATE(sib, elm, sibdir, field, op);                             \
                 up = _RB_UP(elm, field, op);                                        \
                 _RB_BITSUP(parent, field, op) ^= (_RB_BITS(up) & elmdir) ? _RB_LR   \
@@ -649,12 +665,12 @@
                 _RB_BITSUP(elm, field, op) |= _RB_LR;                               \
             } else {                                                                \
                 if ((_RB_BITS(up) & elmdir) == 0 && RB_STRICT_HST && elm != NULL) { \
-                    /* 如果 parent 不会变成叶子，                                    \
-                       暂时不降低 parent 的 rank。 */                                 \
+                    /* If parent will not become a leaf,                            \
+                       do not lower parent's rank yet. */                                 \
                     _RB_BITSUP(parent, field, op) ^= sibdir;                        \
                     _RB_BITSUP(sib, field, op) ^= _RB_LR;                           \
                 } else if ((_RB_BITS(up) & elmdir) == 0) {                          \
-                    /* 降低 parent 的 rank。 */                                            \
+                    /* Lower parent's rank. */                                            \
                     _RB_BITSUP(parent, field, op) ^= elmdir;                        \
                     _RB_BITSUP(sib, field, op) ^= sibdir;                           \
                 } else                                                              \
@@ -715,8 +731,8 @@
             _RB_UP(child, field, op) = parent;                                      \
         if (parent != NULL) {                                                       \
             opar = name##_RB_REMOVE_COLOR(head, parent, child);                     \
-            /* 如果旋转使 'parent' 成为与原来相同子树的根，                           \
-             * 不再更新其增强数据。 */                           \
+            /* If rotation made 'parent' the root of the same subtree as before,      \
+             * do not update its augmented data. */                           \
             if (parent == in && RB_LEFT(parent, field, op) == NULL) {               \
                 opar = NULL;                                                        \
                 parent = RB_PARENT(parent, field, op);                              \
@@ -724,8 +740,8 @@
             _RB_AUGMENT_WALK(parent, opar, field, op);                              \
             if (opar != NULL) {                                                     \
                 /*                                                                  \
-                 * 旋转到搜索路径中的元素子树已变化，                                    \
-                 * 如果 AUGMENT_WALK 未更新则更新增强数据。                               \
+                 * An element rotated into the search path has a changed subtree; if       \
+                 * AUGMENT_WALK did not update it, update augmented data.                  \
                  */                                                                 \
                 (void)RB_AUGMENT_CHECK(opar);                                       \
                 (void)RB_AUGMENT_CHECK(RB_PARENT(opar, field, op));                 \
@@ -735,7 +751,7 @@
     }
 
 #define RB_GENERATE_INSERT_FINISH(name, type, field, op, attr)                      \
-    /* 插入节点到 RB 树 */                                           \
+    /* Inserts a node into the RB tree */                                           \
     attr struct type* name##_RB_INSERT_FINISH(struct name* head,                    \
         struct type* parent, struct type** pptr, struct type* elm)                  \
     {                                                                               \
@@ -757,7 +773,7 @@
     }
 
 #define RB_GENERATE_INSERT(name, type, field, cmp, op, attr)                        \
-    /* 插入节点到 RB 树 */                                           \
+    /* Inserts a node into the RB tree */                                           \
     attr struct type* name##_RB_INSERT(struct name* head, struct type* elm)         \
     {                                                                               \
         struct type* tmp;                                                           \
@@ -778,7 +794,7 @@
     }
 
 #define RB_GENERATE_FIND(name, type, field, cmp, op, attr)                          \
-    /* 查找与 elm 键值相同的节点 */                                   \
+    /* Finds the node with the same key as elm */                                   \
     attr struct type* name##_RB_FIND(struct name* head, struct type* elm)           \
     {                                                                               \
         struct type* tmp = RB_ROOT(head);                                           \
@@ -796,7 +812,7 @@
     }
 
 #define RB_GENERATE_NFIND(name, type, field, cmp, op, attr)                         \
-    /* 查找键值大于等于搜索键的第一个节点 */              \
+    /* Finds the first node greater than or equal to the search key */              \
     attr struct type* name##_RB_NFIND(struct name* head, struct type* elm)          \
     {                                                                               \
         struct type* tmp = RB_ROOT(head);                                           \
@@ -844,7 +860,7 @@
 #endif
 
 #define RB_GENERATE_INSERT_NEXT(name, type, field, cmp, op, attr)                   \
-    /* 在 RB 树的下一个位置插入节点 */                      \
+    /* Inserts a node at the next position in the RB tree */                      \
     attr struct type* name##_RB_INSERT_NEXT(struct name* head, struct type* elm,    \
         struct type* next)                                                          \
     {                                                                               \
@@ -879,7 +895,7 @@
     }
 
 #define RB_GENERATE_INSERT_PREV(name, type, field, cmp, op, attr)                   \
-    /* 在 RB 树的前一个位置插入节点 */                      \
+    /* Inserts a node at the previous position in the RB tree */                      \
     attr struct type* name##_RB_INSERT_PREV(struct name* head, struct type* elm,    \
         struct type* prev)                                                          \
     {                                                                               \
@@ -918,7 +934,7 @@
         if (((cmpelm = RB_PREV(name, head, elm)) != NULL && cmp(cmpelm, elm) >= 0)  \
             || ((cmpelm = RB_NEXT(name, head, elm)) != NULL                         \
                 && cmp(elm, cmpelm) >= 0)) {                                        \
-            /* XXXLAS: Remove/insert 代价较高。 */                            \
+            /* XXXLAS: Remove/insert is heavy handed. */                            \
             RB_REMOVE(name, head, elm);                                             \
             return (RB_INSERT(name, head, elm));                                    \
         }                                                                           \

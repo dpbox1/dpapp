@@ -12,7 +12,7 @@
 
 ```bash
 cd /opt/dpbox
-bin/dpapp -n2 2 /path/to/dpapp/build/tst/test_ctc_perf.so 10000 10000
+bin/dpapp -n1 2 /path/to/dpapp/build/tst/test_ctc_perf.so 10000 10000
 ```
 
 2666666 task/s

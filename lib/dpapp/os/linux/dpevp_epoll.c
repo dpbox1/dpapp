@@ -843,7 +843,7 @@ int dpevp_type()
 
 static inline dpele_t* _dpevp_reap_usd(dpevp_t* self)
 {
-    return _dpele_deque_pop_front(&_gevp->ready);
+    return _dpele_deque_pop_front(&self->ready);
 }
 
 static inline dpele_t* _dpevp_reap_tmr(dpevp_t* self)
